@@ -1,4 +1,3 @@
-from detroit.selection.enter import EnterNode
 from dataclasses import dataclass
 from abc import ABC, abstractclassmethod
 from collections.abc import Callable, Iterator
@@ -101,14 +100,14 @@ class MouseEvent(Event):
 def parse_target(
     target: str | None = None,
     typename: str | None = None,
-    node: Optional[etree.Element] = None,
+    node: str | None = None,
 ):
     if target is not None:
         return target
     if typename == "open":
         return "socket"
     if node is not None:
-        return f"d.getElementById({hash(node)!r})"
+        return "document"
     match typename:
         case "open":
             return "socket"
@@ -136,7 +135,7 @@ class EventHandler(Generic[T]):
         typename: str,
         listener: Callable[[Event, T | None, Optional[etree.Element]], None],
         target: str | None = None,
-        node: Optional[etree.Element] = None,
+        node: str | None = None,
     ):
         self.typename = typename
         self.node = node
@@ -149,19 +148,8 @@ class EventHandler(Generic[T]):
         return f"{target}.addEventListener({typename}, (e) => f({event_json}, {typename}));"
 
     def __str__(self) -> str:
-        def node_repr(node):
-            if node is None:
-                return str(node)
-            if isinstance(node, EnterNode):
-                return str(node)
-            tag = node.tag
-            class_name = node.attrib.get("class")
-            if class_name:
-                return f"{tag}.{class_name}"
-            return tag
-
         return (
-            f"EventHandler({self.typename}, {node_repr(self.node)},"
+            f"EventHandler({self.typename}, {self.node},"
             f" {self.target}, {self.listener})"
         )
 
@@ -192,19 +180,11 @@ class EventGroup(Generic[T]):
                 groups.setdefault(typename, []).append(element_id)
             listeners = [
                 (
-                    # f"let {typename}Ids = new Set({element_ids});"
                     f"window.addEventListener({typename!r}, (e) =>"
                     f" {{f({event_json}, {typename!r})}});"
                 )
                 for typename, element_ids in groups.items()
             ]
-            # listeners = [
-            #     (
-            #         f"{element_ids}.forEach(id => d.getElementById(id)"
-            #         f".addEventListener({typename!r}, (e) => f({event_json}, {typename!r})));"
-            #     )
-            #     for typename, element_ids in groups.items()
-            # ]
             return "".join(listeners)
         else:
             event_json = self.event_json()

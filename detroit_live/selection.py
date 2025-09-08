@@ -1,13 +1,10 @@
 import asyncio
 from itertools import chain
 from hashlib import sha256
-from collections import defaultdict
 from collections.abc import Callable, Iterator
-from detroit.array import argpass
+from collections import defaultdict
 from detroit.selection import Selection
-from detroit.selection.constant import constant
 from detroit.selection.enter import EnterNode
-from detroit.selection.matcher import matcher
 from detroit.selection.namespace import namespace
 from detroit.types import T, Accessor, EtreeFunction, Number
 import orjson
@@ -16,7 +13,7 @@ from quart import websocket
 from typing import Any, TypeVar, Optional
 
 from detroit_live.app import CustomQuart
-from detroit_live.bind import bind_index, bind_key
+from detroit_live.hashtree import HashTree
 from detroit_live.events import Event, EventGroup, EventHandler, parse_event, EVENT_HEADERS
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
@@ -27,7 +24,7 @@ def to_bytes(node: etree.Element) -> bytes:
 def to_string(node: etree.Element) -> str:
     return etree.tostring(node).decode("utf-8").removesuffix("\n")
 
-def creator(node: etree.Element, fullname: dict | None = None) -> etree.SubElement:
+def creator(node: etree.Element, tree: HashTree, fullname: dict | None = None) -> etree.SubElement:
     """
     Creates a subnode associated to :code:`node`.
 
@@ -49,7 +46,7 @@ def creator(node: etree.Element, fullname: dict | None = None) -> etree.SubEleme
         if isinstance(fullname, dict)
         else etree.SubElement(node, fullname, nsmap={})
     )
-    element.set("id", str(hash(element)))
+    element.set("id", tree.insert(element))
     return element
 
 
@@ -119,10 +116,12 @@ class LiveSelection(Selection[T]):
         enter: list[EnterNode[T]] | None = None,
         exit: list[etree.Element] = None,
         data: dict[int, T] | None = None,
+        tree: HashTree | None = None,
         events: dict[str, list[EventHandler]] | None = None,
     ):
         super().__init__(groups, parents, enter, exit, data)
         self._events = {} if events is None else events
+        self._tree = HashTree(self._parents[0]) if tree is None else tree
 
     def select(self, selection: str | None = None) -> TLiveSelection:
         """
@@ -211,6 +210,7 @@ class LiveSelection(Selection[T]):
             selection._groups,
             selection._parents,
             data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -302,6 +302,7 @@ class LiveSelection(Selection[T]):
             selection._groups,
             selection._parents,
             data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -335,6 +336,7 @@ class LiveSelection(Selection[T]):
             selection._groups,
             selection._parents,
             data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -370,6 +372,7 @@ class LiveSelection(Selection[T]):
             selection._groups,
             selection._parents,
             data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -434,6 +437,7 @@ class LiveSelection(Selection[T]):
             selection._groups,
             selection._parents,
             data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -485,22 +489,12 @@ class LiveSelection(Selection[T]):
         >>> result.node().text
         '5'
         """
-        matches = matcher(match)
-        subgroups = []
-        for group in self._groups:
-            subgroup = []
-            for i, node in enumerate(group):
-                if node is None:
-                    continue
-                if isinstance(node, EnterNode):
-                    node = node._parent
-                if matches(self._data.get(hash(node)), i, group):
-                    subgroup.append(node)
-            subgroups.append(subgroup)
+        selection = super().filter(match)
         return LiveSelection(
-            subgroups,
-            self._parents,
-            data=self._data,
+            selection._groups,
+            selection._parents,
+            data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -569,21 +563,22 @@ class LiveSelection(Selection[T]):
             if isinstance(node, EnterNode):
                 enter_node = node
                 node = enter_node._parent
-                subnode = creator(node, fullname)
+                subnode = creator(node, self._tree, fullname)
                 node.append(subnode)
-                self._data[hash(subnode)] = enter_node.__data__
+                self._data[subnode] = enter_node.__data__
                 groups[node].append(subnode)
             else:
-                subnode = creator(node, fullname)
+                subnode = creator(node, self._tree, fullname)
                 node.append(subnode)
                 groups[node].append(subnode)
-                self._data[hash(subnode)] = self._data.get(hash(node))
+                self._data[subnode] = self._data.get(node)
         subgroups = list(groups.values())
         parents = list(groups)
         return LiveSelection(
             subgroups,
             parents,
             data=self._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -608,14 +603,16 @@ class LiveSelection(Selection[T]):
         LiveSelection
             Itself
         """
-        callback = argpass(callback)
-        for group in self._groups:
-            for i, node in enumerate(group):
-                if node is not None:
-                    if isinstance(node, EnterNode):
-                        node = node._parent
-                    callback(node, self._data.get(hash(node)), i, group)
-        return self
+        selection = super().each(callback)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def attr(
         self, name: str, value: Accessor[T, str | Number] | str | None = None
@@ -655,7 +652,16 @@ class LiveSelection(Selection[T]):
           <g class="labels" transform="translate(20, 10)"/>
         </svg>
         """
-        return super().attr(name, value)
+        selection = super().attr(name, value)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def style(
         self, name: str, value: Accessor[T, str] | str | None = None
@@ -694,7 +700,16 @@ class LiveSelection(Selection[T]):
           <text style="fill:black;stroke:none;"/>
         </svg>
         """
-        return super().style(name, value)
+        selection = super().style(name, value)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def text(self, value: Accessor[T, str] | str | None = None) -> TLiveSelection:
         """
@@ -741,7 +756,16 @@ class LiveSelection(Selection[T]):
         </svg>
 
         """
-        return super().text(value)
+        selection = super().text(value)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def datum(self, value: T) -> TLiveSelection:
         """
@@ -783,8 +807,16 @@ class LiveSelection(Selection[T]):
         >>> g1.node()
         <Element g at 0x7f3eda0be4c0>
         """
-        self._data[hash(self.node())] = value
-        return self
+        selection = super().datum(value)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def data(
         self,
@@ -849,48 +881,16 @@ class LiveSelection(Selection[T]):
             data={<Element g at 0x7f3eda09b540>: 'Hello', <Element g at 0x7f3edac50240>: 'world'},
         )
         """
-        bind = bind_key if key else bind_index
-        parents = self._parents
-        groups = self._groups
-
-        if not callable(values):
-            values = constant(values)
-        values = argpass(values)
-
-        update = [None] * len(groups)
-        enter = [None] * len(groups)
-        exit = [None] * len(groups)
-        for j in range(len(groups)):
-            parent = parents[j]
-            group = groups[j]
-            data = list(values(parent, self._data.get(hash(parent)), j, parents))
-            enter[j] = enter_group = [None] * len(data)
-            update[j] = update_group = [None] * len(data)
-            exit[j] = exit_group = [None] * len(group)
-
-            bind(
-                self._data,
-                parent,
-                group,
-                enter_group,
-                update_group,
-                exit_group,
-                data,
-                key,
-            )
-
-            i1 = 0
-            for i0 in range(len(data)):
-                if previous := enter_group[i0]:
-                    if i0 >= i1:
-                        i1 = i0 + 1
-                    while not (
-                        i1 < len(update_group) and update_group[i1] is not None
-                    ) and i1 < len(data):
-                        i1 += 1
-                    previous._next = update_group[i1] if i1 < len(data) else None
-
-        return LiveSelection(update, parents, enter, exit, self._data, self._events)
+        selection = super().data(values, key)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def order(self) -> TLiveSelection:
         """
@@ -902,7 +902,16 @@ class LiveSelection(Selection[T]):
         LiveSelection
             Itself
         """
-        return super().order()
+        selection = super().order()
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def join(
         self,
@@ -1021,7 +1030,16 @@ class LiveSelection(Selection[T]):
         since :code:`data` has 3 elements, :code:`onenter` has generated the
         last circles.
         """
-        return super().join(onenter, onupdate, onexit)
+        selection = super().join(onenter, onupdate, onexit)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def insert(self, name: str, before: str) -> TLiveSelection:
         """
@@ -1139,9 +1157,9 @@ class LiveSelection(Selection[T]):
                 node = group[0]
                 parent = selection._parents[i]
                 index = parent.index(node)
-                created = creator(parent, fullname)
+                created = creator(parent, self._tree, fullname)
                 parent.insert(index, created)
-                self._data[hash(created)] = self._data.get(hash(node))
+                self._data[created] = self._data.get(node)
                 subgroup = [created]
             else:
                 subgroup = []
@@ -1151,6 +1169,7 @@ class LiveSelection(Selection[T]):
             subgroups,
             selection._parents,
             data=self._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -1207,24 +1226,14 @@ class LiveSelection(Selection[T]):
         >>> print(svg.to_string())
         <svg xmlns="http://www.w3.org/2000/svg"/>
         """
-        subgroups = []
-        for group in self._groups:
-            subgroup = []
-            for node in group:
-                if node is not None:
-                    if isinstance(node, EnterNode):
-                        node = node._parent
-                    subgroup.append(node)
-                    parent = node.getparent()
-                    if parent is not None:
-                        parent.remove(node)
-                        subgroup.pop()
-                        self._data.pop(hash(node), None)
-            subgroups.append(subgroup)
+        selection = super().remove()
         return LiveSelection(
-            subgroups,
-            self._parents,
-            data=self._data,
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -1263,7 +1272,16 @@ class LiveSelection(Selection[T]):
 
         >>> name(d3.select_all("div"), "John", "Snow")
         """
-        return super().call(func)
+        selection = super().call(func)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+            data=selection._data,
+            tree=self._tree,
+            events=self._events,
+        )
 
     def clone(self) -> TLiveSelection:
         """
@@ -1280,6 +1298,7 @@ class LiveSelection(Selection[T]):
             selection._groups,
             selection._parents,
             data=selection._data,
+            tree=self._tree,
             events=self._events,
         )
 
@@ -1377,7 +1396,7 @@ class LiveSelection(Selection[T]):
         node: Optional[etree.Element] = None,
     ):
         if node is not None:
-            event_handler = EventHandler(typename, listener, target, node)
+            event_handler = EventHandler(typename, listener, target, self._tree.hash(node))
             event = parse_event(typename)
             self._events.setdefault(event.__name__, EventGroup(event)).append(event_handler)
             return self
@@ -1386,7 +1405,7 @@ class LiveSelection(Selection[T]):
         for node in filter(lambda n: n is not None, nodes):
             if isinstance(node, EnterNode):
                 node = node._parent
-            event_handler = EventHandler(typename, listener, target, node)
+            event_handler = EventHandler(typename, listener, target, self._tree.hash(node))
             event = parse_event(typename)
             self._events.setdefault(event.__name__, EventGroup(event)).append(event_handler)
         return self
@@ -1433,7 +1452,6 @@ class LiveSelection(Selection[T]):
             previous_id = -1
             while True:
                 event = orjson.loads(await websocket.receive())
-                print("Event received !")
                 event_type = event.get("type")
                 if event_type not in self._events:
                     continue
@@ -1442,48 +1460,39 @@ class LiveSelection(Selection[T]):
                 event = group.event.from_json(event)
 
                 # Filter handlers by typename
-                print("Typename of the event:", typename)
-                print("Element ID of the event:", event.element_id)
                 handlers = filter(lambda h: h.typename == typename, group)
                 # Filter handlers by element_id when it is possible
                 if hasattr(event, "element_id"):
                     element_id = int(event.element_id) if event.element_id else -1
-                    print(previous_id, element_id, typename)
                     if previous_id == element_id == -1:
-                        print("All -1")
                         continue
                     elif previous_id != element_id:
-                        print("Different")
                         mouseleave_handlers = list(filter(lambda h: h.typename == "mouseleave", group))
                         handlers = chain(
-                            filter(lambda h: hash(h.node) == previous_id, mouseleave_handlers),
-                            filter(lambda h: hash(h.node) == element_id, handlers),
+                            filter(lambda h: h.node == previous_id, mouseleave_handlers),
+                            filter(lambda h: h.node == element_id, handlers),
                         )
                         handlers = list(handlers)
-                        print(handlers)
                         previous_id = element_id
                     else:
-                        print("Same")
                         element_id = int(event.element_id)
                         previous_id = element_id
-                        handlers = filter(lambda h: hash(h.node) == element_id, handlers)
+                        handlers = filter(lambda h: h.node == element_id, handlers)
 
                 for handler in handlers:
-                    print(handler)
                     if handler.node is None:
                         handler.listener(event, None, None)
-                        element_id = hash(self.node())
                         await websocket.send(
                             orjson.dumps(
-                                {"elementId": element_id, "outerHTML": str(self)}
+                                {"elementId": 0, "outerHTML": str(self)}
                             )
                         )
                         continue
-                    node = handler.node
+                    node = self._tree.get(handler.node)
                     current_sha256 = sha256(to_bytes(node)).digest()
-                    handler.listener(event, self._data.get(hash(node)), node)
+                    handler.listener(event, self._data.get(node), node)
                     if current_sha256 != sha256(to_bytes(node)).digest():
-                        element_id = hash(node)
+                        element_id = handler.node
                         await websocket.send(
                             orjson.dumps(
                                 {"elementId": element_id, "outerHTML": to_string(node)}
