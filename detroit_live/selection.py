@@ -1,0 +1,1636 @@
+import asyncio
+from itertools import chain
+from hashlib import sha256
+from collections import defaultdict
+from collections.abc import Callable, Iterator
+from detroit.array import argpass
+from detroit.selection import Selection
+from detroit.selection.constant import constant
+from detroit.selection.enter import EnterNode
+from detroit.selection.matcher import matcher
+from detroit.selection.namespace import namespace
+from detroit.types import T, Accessor, EtreeFunction, Number
+import orjson
+from lxml import etree
+from quart import websocket
+from typing import Any, TypeVar, Optional
+
+from detroit_live.app import CustomQuart
+from detroit_live.bind import bind_index, bind_key
+from detroit_live.events import Event, EventGroup, EventHandler, parse_event, EVENT_HEADERS
+
+TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
+
+def to_bytes(node: etree.Element) -> bytes:
+    return etree.tostring(node).removesuffix(b"\n")
+
+def to_string(node: etree.Element) -> str:
+    return etree.tostring(node).decode("utf-8").removesuffix("\n")
+
+def creator(node: etree.Element, fullname: dict | None = None) -> etree.SubElement:
+    """
+    Creates a subnode associated to :code:`node`.
+
+    Parameters
+    ----------
+    node : etree.Element
+        Node on which the subnode will be associated.
+    fullname : dict | None
+        Dictionary with keys :code:`"local"` as name and :code:`"space"` for
+        its namespace.
+
+    Returns
+    -------
+    etree.SubElement
+        Subnode
+    """
+    element = (
+        etree.SubElement(node, fullname["local"], nsmap=fullname["space"])
+        if isinstance(fullname, dict)
+        else etree.SubElement(node, fullname, nsmap={})
+    )
+    element.set("id", str(hash(element)))
+    return element
+
+
+class LiveSelection(Selection[T]):
+    """
+    A selection is a set of elements from the DOM. Typically these elements are
+    identified by selectors such as .fancy for elements with the class fancy,
+    or div to select DIV elements.
+
+    Selection methods come in two forms, :code:`select` and :code:`select_all`:
+    the former selects only the first matching element, while the latter
+    selects all matching elements in document order. The top-level selection
+    methods, d3.select and d3.select_all, query the entire document; the
+    subselection methods, selection.select and selection.select_all, restrict
+    selection to descendants of the selected elements.
+
+    By convention, selection methods that return the current selection such as
+    selection.attr use four spaces of indent, while methods that return a new
+    selection use only two. This helps reveal changes of context by making them
+    stick out of the chain:
+
+    Parameters
+    ----------
+    groups : list[list[etree.Element]]
+        List of groups of selected nodes given its parent.
+    parents : list[etree.Element]
+        List of parents related to groups.
+    enter : list[EnterNode[T]] | None = None
+        List of placeholder nodes for each datum that had no corresponding
+        DOM element in the selection.
+    exit : list[etree.Element] = None
+        List of existing DOM elements in the selection for which no new datum was found.
+    data : dict[etree.Element, T] | None = None
+        Association between nodes and its data
+
+    Examples
+    --------
+
+    >>> body = d3.create("body")
+    >>> (
+    ...     body
+    ...     .append("svg")
+    ...     .attr("width", 960)
+    ...     .attr("height", 500)
+    ...     .append("g")
+    ...     .attr("transform", "translate(20, 20)")
+    ...     .append("rect")
+    ...     .attr("width", 920)
+    ...     .attr("height", 460)
+    ... )
+    >>> print(body.to_string())
+    <body>
+      <svg xmlns="http://www.w3.org/2000/svg" weight="960" height="500">
+        <g transform="translate(20, 20)">
+          <rect width="920" height="460"/>
+        </g>
+      </svg>
+    </body>
+    >>> str(body)
+    '<body><svg xmlns="http://www.w3.org/2000/svg" weight="960" height="500"><g transform="translate(20, 20)"><rect width="920" height="460"/></g></svg></body>'
+    """
+
+    def __init__(
+        self,
+        groups: list[list[etree.Element]],
+        parents: list[etree.Element],
+        enter: list[EnterNode[T]] | None = None,
+        exit: list[etree.Element] = None,
+        data: dict[int, T] | None = None,
+        events: dict[str, list[EventHandler]] | None = None,
+    ):
+        super().__init__(groups, parents, enter, exit, data)
+        self._events = {} if events is None else events
+
+    def select(self, selection: str | None = None) -> TLiveSelection:
+        """
+        Selects the first element that matches the specified :code:`selection` string.
+
+        Supported forms are:
+
+        - :code:`{tag_name}{.class_name}{:last-of-type}`
+        - :code:`{tag_name}{[attribute_name="value"]}{:last-of-type}`
+
+        The :code:`tag_name` is any SVG element tag (ex: :code:`g`,
+        :code:`rect`, :code:`line`, ...). You can chain selections by adding
+        one space between them.
+
+        The :code:`.class_name` is specified when a element is created such as:
+
+        .. code:: python
+
+            svg.append("g").attr("class", "my_class")
+
+        In this example, the value of :code:`.class_name` is :code:`.my_class`.
+
+        The :code:`:last-of-type` option is useful when you only need the last
+        element.
+
+        Using :code:`[attribute_name="value"]` allows you to get any element
+        associated to a specific attribute. For instance, in the following
+        code:
+
+        .. code:: python
+
+            svg.append("g").attr("aria-label", "my_group")
+
+        To access this element, the value of :code:`[attribute_name="value"]`
+        must be :code:`[aria-label="my_group"]`.
+
+        Parameters
+        ----------
+        selection : str | None
+            Selection string
+
+        Returns
+        -------
+        LiveSelection
+            Selection of first element
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> svg.append("g").attr("class", "ticks")
+        Selection(
+            groups=[[g.ticks]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f2d1504cb80>: None},
+        )
+        >>> svg.append("g").attr("class", "labels")
+        Selection(
+            groups=[[g.labels]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f2d1504cb80>: None, <Element g at 0x7f2d15052640>: None},
+        )
+        >>> svg.select("g.ticks")
+        Selection(
+            groups=[[g.ticks]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f2d1504cb80>: None, <Element g at 0x7f2d15052640>: None},
+        )
+        >>> svg.select("g.points")
+        Selection(
+            groups=[[]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f2d1504cb80>: None, <Element g at 0x7f2d15052640>: None},
+        )
+        """
+        selection = super().select(selection)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            data=selection._data,
+            events=self._events,
+        )
+
+    def select_all(self, selection: str | None = None) -> TLiveSelection:
+        """
+        Selects all elements that match the specified :code:`selection` string.
+
+        Supported forms are:
+
+        - :code:`{tag_name}{.class_name}{:last-of-type}`
+        - :code:`{tag_name}{[attribute_name="value"]}{:last-of-type}`
+
+        The :code:`tag_name` is any SVG element tag (ex: :code:`g`,
+        :code:`rect`, :code:`line`, ...). You can chain selections by adding
+        one space between them.
+
+        The :code:`.class_name` is specified when a element is created such as:
+
+        .. code:: python
+
+            svg.append("g").attr("class", "my_class")
+
+        In this example, the value of :code:`.class_name` is :code:`.my_class`.
+
+        The :code:`:last-of-type` option is useful when you only need the last
+        element.
+
+        Using :code:`[attribute_name="value"]` allows you to get any element
+        associated to a specific attribute. For instance, in the following
+        code:
+
+        .. code:: python
+
+            svg.append("g").attr("aria-label", "my_group")
+
+        To access this element, the value of :code:`[attribute_name="value"]`
+        must be :code:`[aria-label="my_group"]`.
+
+        Parameters
+        ----------
+        selection : str | None
+            Selection string
+
+        Returns
+        -------
+        LiveSelection
+            Selection of all matched elements
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> scale = d3.scale_linear([0, 10], [0, 100])
+        >>> print(svg.call(d3.axis_bottom(scale).set_ticks(3)).to_string())
+        <svg xmlns:xmlns="http://www.w3.org/2000/svg" fill="none" font-size="10" font-family="sans-serif" text-anchor="middle">
+          <path class="domain" stroke="currentColor" d="M0.5,6V0.5H100.5V6"/>
+          <g class="tick" opacity="1" transform="translate(0.5, 0)">
+            <line stroke="currentColor" y2="6"/>
+            <text fill="currentColor" y="9" dy="0.71em">0</text>
+          </g>
+          <g class="tick" opacity="1" transform="translate(50.5, 0)">
+            <line stroke="currentColor" y2="6"/>
+            <text fill="currentColor" y="9" dy="0.71em">5</text>
+          </g>
+          <g class="tick" opacity="1" transform="translate(100.5, 0)">
+            <line stroke="currentColor" y2="6"/>
+            <text fill="currentColor" y="9" dy="0.71em">10</text>
+          </g>
+        </svg>
+        >>> svg.select_all("g").select_all("line")
+        Selection(
+            groups=[[line], [line], [line]],
+            parents=[g.tick, g.tick, g.tick],
+            enter=None,
+            exit=None,
+            data={},
+        )
+        >>> svg.select_all("line")
+        Selection(
+            groups=[[line], [line], [line]],
+            parents=[g.tick, g.tick, g.tick],
+            enter=None,
+            exit=None,
+            data={},
+        )
+        """
+        selection = super().select_all(selection)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            data=selection._data,
+            events=self._events,
+        )
+
+    def enter(self) -> TLiveSelection:
+        """
+        Returns the enter selection: placeholder nodes for each datum that had
+        no corresponding DOM element in the selection.
+
+        Returns
+        -------
+        LiveSelection
+            Enter selection
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> text = svg.select_all("text").data(["hello", "world"])
+        >>> text_enter = text.enter()
+        >>> text_enter
+        Selection(
+            groups=[[EnterNode(svg, hello), EnterNode(svg, world)]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={},
+        )
+        """
+        selection = super().enter()
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            data=selection._data,
+            events=self._events,
+        )
+
+    def exit(self) -> TLiveSelection:
+        """
+        Returns the exit selection: existing DOM elements in the selection for
+        which no new datum was found. (The exit selection is empty for
+        selections not returned by selection.data.)
+
+
+        Returns
+        -------
+        LiveSelection
+            Exit selection
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> text = svg.select_all("text").data(["hello", "world"])
+        >>> text_exit = text.exit()
+        >>> text_exit
+        Selection(
+            groups=[[]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={},
+        )
+        """
+        selection = super().exit()
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            data=selection._data,
+            events=self._events,
+        )
+
+    def merge(self, context: TLiveSelection) -> TLiveSelection:
+        """
+        Returns a new selection merging this selection with the specified other
+        selection or transition. The returned selection has the same number of
+        groups and the same parents as this selection. Any missing (None)
+        elements in this selection are filled with the corresponding element,
+        if present (not null), from the specified selection. (If the other
+        selection has additional groups or parents, they are ignored.)
+
+        Parameters
+        ----------
+        context : Selection
+            Selection
+
+        Returns
+        -------
+        LiveSelection
+            Merged selection
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> text = svg.select_all("text").data(["hello", "world"])
+        >>> text_enter = text.enter()
+        >>> text_enter.append("text").text(lambda text: text)
+        Selection(
+            groups=[[text, text]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element text at 0x7f2d14b2a580>: 'hello', <Element text at 0x7f2d14457540>: 'world'},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns:xmlns="http://www.w3.org/2000/svg">
+          <text>hello</text>
+          <text>world</text>
+        </svg>
+        >>> text
+        Selection(
+            groups=[[None, None]],
+            parents=[svg],
+            enter=[[EnterNode(svg, hello), EnterNode(svg, world)]],
+            exit=[[]],
+            data={},
+        )
+        >>> text = text.merge(text_enter)
+        >>> text
+        Selection(
+            groups=[[EnterNode(svg, hello), EnterNode(svg, world)]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element text at 0x7f2d14b2a580>: 'hello', <Element text at 0x7f2d14457540>: 'world'},
+        )
+        """
+        selection = super().merge(context)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            data=selection._data,
+            events=self._events,
+        )
+
+    def filter(self, match: Accessor[T, bool] | int | float | str) -> TLiveSelection:
+        """
+        Filters the selection, returning a new selection that contains only the
+        elements for which the specified filter is true.
+
+        Parameters
+        ----------
+        match : Accessor[T, bool] | int | float | str
+            Constant to match or accessor which returns a boolean
+
+        Returns
+        -------
+        LiveSelection
+            Filtered selection
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> scale = d3.scale_linear([0, 10], [0, 100])
+        >>> print(svg.call(d3.axis_bottom(scale).set_ticks(3)).to_string())
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" font-size="10" font-family="sans-serif" text-anchor="middle">
+          <path class="domain" stroke="currentColor" d="M0.5,6V0.5H100.5V6"/>
+          <g class="tick" opacity="1" transform="translate(0.5, 0)">
+            <line stroke="currentColor" y2="6"/>
+            <text fill="currentColor" y="9" dy="0.71em">0</text>
+          </g>
+          <g class="tick" opacity="1" transform="translate(50.5, 0)">
+            <line stroke="currentColor" y2="6"/>
+            <text fill="currentColor" y="9" dy="0.71em">5</text>
+          </g>
+          <g class="tick" opacity="1" transform="translate(100.5, 0)">
+            <line stroke="currentColor" y2="6"/>
+            <text fill="currentColor" y="9" dy="0.71em">10</text>
+          </g>
+        </svg>
+        >>> result = svg.select_all("text").filter(lambda d, i: i % 2 != 0)
+        >>> result
+        Selection(
+            groups=[[text]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={},
+        )
+        >>> result.node().text
+        '5'
+        """
+        matches = matcher(match)
+        subgroups = []
+        for group in self._groups:
+            subgroup = []
+            for i, node in enumerate(group):
+                if node is None:
+                    continue
+                if isinstance(node, EnterNode):
+                    node = node._parent
+                if matches(self._data.get(hash(node)), i, group):
+                    subgroup.append(node)
+            subgroups.append(subgroup)
+        return LiveSelection(
+            subgroups,
+            self._parents,
+            data=self._data,
+            events=self._events,
+        )
+
+    def append(self, name: str) -> TLiveSelection:
+        """
+        If the specified name is a string, appends a new element of this type
+        (tag name) as the last child of each selected element, or before the
+        next following sibling in the update selection if this is an enter
+        selection. The latter behavior for enter selections allows you to
+        insert elements into the DOM in an order consistent with the new bound
+        data; however, note that selection.order may still be required if
+        updating elements change order (i.e., if the order of new data is
+        inconsistent with old data).
+
+        Parameters
+        ----------
+        name : str
+            Tag name
+
+        Returns
+        -------
+        LiveSelection
+            Selection
+
+        Examples
+        --------
+
+        Simple append:
+
+        >>> svg = d3.create("svg")
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg"/>
+        >>> g = svg.append("g").attr("class", "labels")
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g class="labels"/>
+        </svg>
+
+        Multiple append:
+
+        >>> import detroit as d3
+        >>> svg = d3.create("svg")
+        >>> svg.select_all("g").data([None, None]).enter().append("g").append("text")
+        Selection(
+            groups=[[text], [text]],
+            parents=[g, g],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f91d8360200>: None, <Element g at 0x7f91d8360240>: None, <Element text at 0x7f91d8bbb540>: None, <Element text at 0
+        x7f91d8360140>: None},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g>
+            <text/>
+          </g>
+          <g>
+            <text/>
+          </g>
+        </svg>
+        """
+        fullname = namespace(name)
+        groups = defaultdict(list)
+        nodes = (node for group in self._groups for node in group)
+        for node in filter(lambda n: n is not None, nodes):
+            if isinstance(node, EnterNode):
+                enter_node = node
+                node = enter_node._parent
+                subnode = creator(node, fullname)
+                node.append(subnode)
+                self._data[hash(subnode)] = enter_node.__data__
+                groups[node].append(subnode)
+            else:
+                subnode = creator(node, fullname)
+                node.append(subnode)
+                groups[node].append(subnode)
+                self._data[hash(subnode)] = self._data.get(hash(node))
+        subgroups = list(groups.values())
+        parents = list(groups)
+        return LiveSelection(
+            subgroups,
+            parents,
+            data=self._data,
+            events=self._events,
+        )
+
+    def each(self, callback: EtreeFunction[T, None]) -> TLiveSelection:
+        """
+        Invokes the specified function for each selected element, in order,
+        being passed the current DOM element (nodes[i]), the current datum (d),
+        the current index (i), and the current group (nodes).
+
+        Parameters
+        ----------
+        callback : EtreeFunction[T, None]
+            Function to call which takes as argument:
+
+            * **node** (:code:`etree.Element`) - the node element
+            * **data** (:code:`Any`) - current data associated to the node
+            * **index** (:code:`int`) - the index of the node in its group
+            * **group** (:code:`list[etree.Element]`) - the node's group with other nodes.
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+        """
+        callback = argpass(callback)
+        for group in self._groups:
+            for i, node in enumerate(group):
+                if node is not None:
+                    if isinstance(node, EnterNode):
+                        node = node._parent
+                    callback(node, self._data.get(hash(node)), i, group)
+        return self
+
+    def attr(
+        self, name: str, value: Accessor[T, str | Number] | str | None = None
+    ) -> TLiveSelection:
+        """
+        If a value is specified, sets the attribute with the specified name to
+        the specified value on the selected elements and returns this
+        selection.
+
+        If the value is a function, it is evaluated for each selected element,
+        in order, being passed the current datum (d), the current index (i),
+        and the current group (nodes).
+
+        Parameters
+        ----------
+        name : str
+            Name of the attribute
+        value : Accessor[T, str | Number] | str | None
+            Value
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> print(
+        ...     svg.append("g")
+        ...     .attr("class", "labels")
+        ...     .attr("transform", "translate(20, 10)")
+        ...     .to_string()
+        ... )
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g class="labels" transform="translate(20, 10)"/>
+        </svg>
+        """
+        return super().attr(name, value)
+
+    def style(
+        self, name: str, value: Accessor[T, str] | str | None = None
+    ) -> TLiveSelection:
+        """
+        If a value is specified, sets the style with the specified name to the
+        specified value on the selected elements and returns this selection.
+
+        If the value is a function, it is evaluated for each selected element,
+        in order, being passed the current datum (d), the current index (i),
+        and the current group (nodes).
+
+        Parameters
+        ----------
+        name : str
+            Name of the style
+        value : Accessor[T, str] | str | None
+            Value constant or function
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> print(
+        ...     svg.append("text")
+        ...     .style("fill", "black")
+        ...     .style("stroke", "none")
+        ...     .to_string()
+        ... )
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <text style="fill:black;stroke:none;"/>
+        </svg>
+        """
+        return super().style(name, value)
+
+    def text(self, value: Accessor[T, str] | str | None = None) -> TLiveSelection:
+        """
+        If the value is a constant, then all elements are given the same text
+        content; otherwise, if the value is a function, it is evaluated for
+        each selected element, in order, being passed the current datum (d),
+        the current index (i), and the current group (nodes).
+
+        Parameters
+        ----------
+        value : Accessor[T, str] | str | None
+            Value constant or function
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        Direct assignment:
+
+        >>> svg = d3.create("svg")
+        >>> print(svg.append("text").text("Hello, world!").to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <text>Hello, world!</text>
+        </svg>
+
+        Through data:
+
+        >>> svg = d3.create("svg")
+        >>> print(
+        ...     svg.select_all("text")
+        ...     .data(["Hello", "world"])
+        ...     .enter()
+        ...     .append("text")
+        ...     .text(lambda text, i: f"{text} - index {i}")
+        ...     .to_string()
+        ... )
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <text>Hello - index 0</text>
+          <text>world - index 1</text>
+        </svg>
+
+        """
+        return super().text(value)
+
+    def datum(self, value: T) -> TLiveSelection:
+        """
+        Sets the bound data for the first selected node.
+
+        Parameters
+        ----------
+        value : T
+            Value
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> g1 = svg.append("g").attr("class", "g1")
+        >>> g2 = svg.append("g").attr("class", "g2")
+        >>> g = svg.select_all("g")
+        >>> g
+        Selection(
+            groups=[[g.g1, g.g2]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f3eda0be4c0>: None, <Element g at 0x7f3eda029700>: None},
+        )
+        >>> g.datum("Hello, world")
+        Selection(
+            groups=[[g.g1, g.g2]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f3eda0be4c0>: 'Hello, world', <Element g at 0x7f3eda029700>: None},
+        )
+        >>> g1.node()
+        <Element g at 0x7f3eda0be4c0>
+        """
+        self._data[hash(self.node())] = value
+        return self
+
+    def data(
+        self,
+        values: list[T] | EtreeFunction[T, list[T]],
+        key: Accessor[T, float | str] | None = None,
+    ) -> TLiveSelection:
+        """
+        Binds the specified list of data with the selected elements, returning
+        a new selection that represents the update selection: the elements
+        successfully bound to data. Also defines the enter and exit selections
+        on the returned selection, which can be used to add or remove elements
+        to correspond to the new data. The specified data is an array of
+        arbitrary values (e.g., numbers or objects), or a function that returns
+        an array of values for each group.
+
+        Parameters
+        ----------
+        values : list[T] | EtreeFunction[T, list[T]]
+            List of data to bind
+        key : Accessor[T, float | str] | None
+            Optional accessor which returns a key value
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> svg.append("g")
+        Selection(
+            groups=[[g]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f3eda09b540>: None},
+        )
+        >>> svg.append("g")
+        Selection(
+            groups=[[g]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7f3eda09b540>: None, <Element g at 0x7f3edac50240>: None},
+        )
+        >>> svg.select_all("text").data(["Hello", "world"])
+        Selection(
+            groups=[[None, None]],
+            parents=[svg],
+            enter=[[EnterNode(svg, Hello), EnterNode(svg, world)]],
+            exit=[[]],
+            data={<Element g at 0x7f3eda09b540>: None, <Element g at 0x7f3edac50240>: None},
+        )
+        >>> svg.select_all("g").data(["Hello", "world"])
+        Selection(
+            groups=[[g, g]],
+            parents=[svg],
+            enter=[[None, None]],
+            exit=[[None, None]],
+            data={<Element g at 0x7f3eda09b540>: 'Hello', <Element g at 0x7f3edac50240>: 'world'},
+        )
+        """
+        bind = bind_key if key else bind_index
+        parents = self._parents
+        groups = self._groups
+
+        if not callable(values):
+            values = constant(values)
+        values = argpass(values)
+
+        update = [None] * len(groups)
+        enter = [None] * len(groups)
+        exit = [None] * len(groups)
+        for j in range(len(groups)):
+            parent = parents[j]
+            group = groups[j]
+            data = list(values(parent, self._data.get(hash(parent)), j, parents))
+            enter[j] = enter_group = [None] * len(data)
+            update[j] = update_group = [None] * len(data)
+            exit[j] = exit_group = [None] * len(group)
+
+            bind(
+                self._data,
+                parent,
+                group,
+                enter_group,
+                update_group,
+                exit_group,
+                data,
+                key,
+            )
+
+            i1 = 0
+            for i0 in range(len(data)):
+                if previous := enter_group[i0]:
+                    if i0 >= i1:
+                        i1 = i0 + 1
+                    while not (
+                        i1 < len(update_group) and update_group[i1] is not None
+                    ) and i1 < len(data):
+                        i1 += 1
+                    previous._next = update_group[i1] if i1 < len(data) else None
+
+        return LiveSelection(update, parents, enter, exit, self._data, self._events)
+
+    def order(self) -> TLiveSelection:
+        """
+        Re-inserts elements into the document such that the document order of
+        each group matches the selection order.
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+        """
+        return super().order()
+
+    def join(
+        self,
+        onenter: Callable[[TLiveSelection], TLiveSelection] | str,
+        onupdate: Callable[[TLiveSelection], TLiveSelection] | None = None,
+        onexit: Callable[[TLiveSelection], None] | None = None,
+    ) -> TLiveSelection:
+        """
+        Appends, removes and reorders elements as necessary to match the data
+        that was previously bound by selection.data, returning the merged enter
+        and update selection. This method is a convenient alternative to the
+        explicit general update pattern, replacing selection.enter,
+        selection.exit, selection.append, selection.remove, and
+        selection.order.
+
+        Parameters
+        ----------
+        onenter : Callable[[Selection], Selection] | str
+            Enter selection or function
+        onupdate : Callable[[Selection], Selection] | None
+            Function
+        onexit : Callable[[Selection], None] | None
+            Function
+
+        Returns
+        -------
+        LiveSelection
+            Selection with joined elements
+
+        Examples
+        --------
+
+        >>> data = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]
+        >>> svg = d3.create("svg")
+        >>> table = (
+        ...     svg.append("table")
+        ...     .select_all("tr")
+        ...     .data(data)
+        ...     .join("tr")
+        ...     .select_all("td")
+        ...     .data(lambda _, d: d)
+        ...     .join("td")
+        ...     .text(lambda d: str(d))
+        ... )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <table>
+            <tr>
+              <td>0</td>
+              <td>1</td>
+              <td>2</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>5</td>
+              <td>6</td>
+              <td>7</td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>9</td>
+              <td>10</td>
+              <td>11</td>
+            </tr>
+            <tr>
+              <td>12</td>
+              <td>13</td>
+              <td>14</td>
+              <td>15</td>
+            </tr>
+          </table>
+        </svg>
+
+        Another usage could be to specify functions :
+
+        >>> data = [None] * 3
+        >>> svg = d3.create("svg")
+        >>> svg.append("circle").attr("fill", "yellow")
+        Selection(
+            groups=[[circle]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element circle at 0x7f5e219fd300>: None},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <circle fill="yellow"/>
+        </svg>
+        >>> (
+        ...     svg.select_all("circle")
+        ...     .data(data)
+        ...     .join(
+        ...         onenter=lambda enter: enter.append("circle").attr("fill", "green"),
+        ...         onupdate=lambda update: update.attr("fill", "blue")
+        ...     )
+        ...     .attr("stroke", "black")
+        ... )
+        Selection(
+            groups=[[circle, circle, None]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element circle at 0x7f5e219fd300>: 0, <Element circle at 0x7f5e2251f040>: 1, <Element circle at 0x7f5e22517a80>: 2},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <circle fill="blue"/>
+          <circle fill="green" stroke="black"/>
+          <circle fill="green" stroke="black"/>
+        </svg>
+
+        In this example, the attribute :code:`fill` of the existing circle was
+        updated, by :code:`onupdate`, from :code:`yellow` to :code:`blue`. And
+        since :code:`data` has 3 elements, :code:`onenter` has generated the
+        last circles.
+        """
+        return super().join(onenter, onupdate, onexit)
+
+    def insert(self, name: str, before: str) -> TLiveSelection:
+        """
+        If the specified name is a string, inserts a new element of this type
+        (tag name) before the first element matching the specified
+        :code:`before` selector for each selected element.
+
+        Parameters
+        ----------
+        name : str
+            Tag name
+        before : str
+            Node element selection
+
+        Returns
+        -------
+        LiveSelection
+            Selection with inserted element(s)
+
+        Examples
+        --------
+
+        Since :code:`before` refers to a selected tag, this method will operate
+        multiple insertions.
+
+        >>> import detroit as d3
+        >>> svg = d3.create("svg")
+        >>> (
+        ...     svg.select_all("g")
+        ...     .data([None, None])
+        ...     .enter()
+        ...     .append("g")
+        ...     .append("text")
+        ... )
+        Selection(
+            groups=[[text], [text]],
+            parents=[g, g],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7fc5748c2f00>: None, <Element g at 0x7fc5748c2300>: None, <Element text at 0x7fc575105280>: None, <Element text at 0x7fc5748c2100>: None},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g>
+            <text/>
+          </g>
+          <g>
+            <text/>
+          </g>
+        </svg>
+        >>> svg.insert("circle", "text")
+        Selection(
+            groups=[[circle], [circle]],
+            parents=[g, g],
+            enter=None,
+            exit=None,
+            data={<Element circle at 0x7fc5748f9980>: None, <Element circle at 0x7fc5748f8c80>: None},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g>
+            <circle/>
+            <text/>
+          </g>
+          <g>
+            <circle/>
+            <text/>
+          </g>
+        </svg>
+
+        If you prefer to insert an element at a specific location, you need to
+        select first the specific node and then insert your element.
+
+        >>> svg = d3.create("svg")
+        >>> (
+        ...     svg.select_all("g")
+        ...     .data(["class1", "class2"])
+        ...     .enter()
+        ...     .append("g")
+        ...     .append("text")
+        ...     .attr("class", lambda d: d)
+        ... )
+        Selection(
+            groups=[[text.class1], [text.class2]],
+            parents=[g, g],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7fc5748e9340>: 'class1', <Element g at 0x7fc5748e9b80>: 'class2', <Element text at 0x7fc5753f7140>: 'class1', <Eleme
+        nt text at 0x7fc5748e8180>: 'class2'},
+        )
+        >>> svg.insert("circle", ".class1")
+        Selection(
+            groups=[[circle]],
+            parents=[g],
+            enter=None,
+            exit=None,
+            data={<Element circle at 0x7fc5753f0500>: None},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g>
+            <circle/>
+            <text class="class1"/>
+          </g>
+          <g>
+            <text class="class2"/>
+          </g>
+        </svg>
+        """
+        fullname = namespace(name)
+        selection = self.select_all(before)
+        subgroups = []
+        for i, group in enumerate(selection._groups):
+            if len(group) > 0:
+                node = group[0]
+                parent = selection._parents[i]
+                index = parent.index(node)
+                created = creator(parent, fullname)
+                parent.insert(index, created)
+                self._data[hash(created)] = self._data.get(hash(node))
+                subgroup = [created]
+            else:
+                subgroup = []
+            subgroups.append(subgroup)
+
+        return LiveSelection(
+            subgroups,
+            selection._parents,
+            data=self._data,
+            events=self._events,
+        )
+
+    def remove(self) -> TLiveSelection:
+        """
+        Removes the selected elements from the document. Returns this selection
+        (the removed elements) which are now detached from the DOM.
+
+        Returns
+        -------
+        LiveSelection
+            Selection with removed elements
+
+        Examples
+        --------
+
+        >>> import detroit as d3
+        >>> svg = d3.create("svg")
+        >>> (
+        ...     svg.select_all("g")
+        ...     .data([None] * 10)
+        ...     .enter()
+        ...     .append("g")
+        ...     .attr("class", "domain")
+        ... )
+        Selection(
+            groups=[[g.domain, g.domain, g.domain, g.domain, g.domain, g.domain, g.domain, g.domain, g.domain, g.domain]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7fd461822100>: None, <Element g at 0x7fd461822800>: None, <Element g at 0x7fd461821980>: None, <Element g at 0x7fd4618219c0>: None, <Element g at 0x7fd461821380>: None, <Element g at 0x7fd461822ec0>: None, <Element g at 0x7fd461821580>: None, <Element g at 0x7fd461822180>: None, <Element g at 0x7fd461823300>: None, <Element g at 0x7fd461821200>: None},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+          <g class="domain"/>
+        </svg>
+        >>> svg.select_all(".domain").remove()
+        Selection(
+            groups=[[]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={},
+        )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg"/>
+        """
+        subgroups = []
+        for group in self._groups:
+            subgroup = []
+            for node in group:
+                if node is not None:
+                    if isinstance(node, EnterNode):
+                        node = node._parent
+                    subgroup.append(node)
+                    parent = node.getparent()
+                    if parent is not None:
+                        parent.remove(node)
+                        subgroup.pop()
+                        self._data.pop(hash(node), None)
+            subgroups.append(subgroup)
+        return LiveSelection(
+            subgroups,
+            self._parents,
+            data=self._data,
+            events=self._events,
+        )
+
+    def call(self, func: Callable[[TLiveSelection, ...], Any], *args: Any) -> TLiveSelection:
+        """
+        Invokes the specified function exactly once, passing in this selection
+        along with any optional arguments. Returns this selection.
+
+        Parameters
+        ----------
+        func : Callable[[Selection, ...], Any]
+            Function to call
+        args : Any
+            Arguments for the function to call
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        This is equivalent to invoking the function by hand but facilitates
+        method chaining. For example, to set several styles in a reusable
+        function:
+
+        >>> def name(selection, first, last):
+        ...     selection.attr("first-name", first).attr("last-name", last)
+
+        Now say:
+
+        >>> d3.select_all("div").call(name, "John", "Snow")
+
+        This is roughly equivalent to:
+
+        >>> name(d3.select_all("div"), "John", "Snow")
+        """
+        return super().call(func)
+
+    def clone(self) -> TLiveSelection:
+        """
+        Inserts clones of the selected elements immediately following the
+        selected elements and returns a selection of the newly added clones.
+
+        Returns
+        -------
+        LiveSelection
+            Clone of itself
+        """
+        selection = super().clone()
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            data=selection._data,
+            events=self._events,
+        )
+
+    def node(self) -> etree.Element:
+        """
+        Returns the first (non-None) element in this selection.
+
+        Returns
+        -------
+        etree.Element
+            Node
+
+        Examples
+        --------
+        >>> svg = d3.create("svg")
+        >>> g = (
+        ...     svg.select_all("g")
+        ...     .data(list(reversed(range(10))))
+        ...     .enter()
+        ...     .append("g")
+        ...     .attr("class", lambda d: f"class{d}")
+        ... )
+        >>> g
+        Selection(
+            groups=[[g.class9, g.class8, g.class7, g.class6, g.class5, g.class4, g.class3, g.class2, g.class1, g.class0]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7fac2cf609c0>: 9, <Element g at 0x7fac2c4e1880>: 8, <Element g at 0x7fac2c4e0840>: 7, <Element g at 0x7fac2cca92c0>:6, <Element g at 0x7fac2cca8800>: 5, <Element g at 0x7fac2cca99c0>: 4, <Element g at 0x7fac2cca9940>: 3, <Element g at 0x7fac2cca9200>: 2, <Element g at 0x7fac2ccaa980>: 1, <Element g at 0x7fac2ccaa400>: 0},
+        )
+        >>> g.node()
+        <Element g at 0x7fac2cf609c0>
+        """
+        return super().node()
+
+    def nodes(self) -> list[etree.Element]:
+        """
+        Returns a list of all (non-None) elements in this selection.
+
+        Returns
+        -------
+        list[etree.Element]
+            List of nodes
+
+        Examples
+        --------
+        >>> svg = d3.create("svg")
+        >>> g = (
+        ...     svg.select_all("g")
+        ...     .data(list(reversed(range(10))))
+        ...     .enter()
+        ...     .append("g")
+        ...     .attr("class", lambda d: f"class{d}")
+        ... )
+        >>> g
+        Selection(
+            groups=[[g.class9, g.class8, g.class7, g.class6, g.class5, g.class4, g.class3, g.class2, g.class1, g.class0]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7fac2cf609c0>: 9, <Element g at 0x7fac2c4e1880>: 8, <Element g at 0x7fac2c4e0840>: 7, <Element g at 0x7fac2cca92c0>:6, <Element g at 0x7fac2cca8800>: 5, <Element g at 0x7fac2cca99c0>: 4, <Element g at 0x7fac2cca9940>: 3, <Element g at 0x7fac2cca9200>: 2, <Element g at 0x7fac2ccaa980>: 1, <Element g at 0x7fac2ccaa400>: 0},
+        )
+        >>> g.nodes()
+        [<Element g at 0x7fac2cf609c0>, <Element g at 0x7fac2c4e1880>, <Element g at 0x7fac2c4e0840>, <Element g at 0x7fac2cca92c0>, <Element g at 0x7fac2cca8800>, <Element g at 0x7fac2cca99c0>, <Element g at 0x7fac2cca9940>, <Element g at 0x7fac2cca9200>, <Element g at 0x7fac2ccaa980>, <Element g at 0x7fac2ccaa400>]
+        """
+        return list(self)
+
+    def __iter__(self) -> Iterator[etree.Element]:
+        """
+        Make the selection as an iterator
+
+        Returns
+        -------
+        Iterator[etree.Element]
+            Iterator of non-None nodes
+        """
+        return super().__iter__()
+
+    def selection(self) -> TLiveSelection:
+        """
+        Returns the selection without any modification.
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+        """
+        return self
+
+    def on(
+        self,
+        typename: str,
+        listener: Callable[[Event, T | None, Optional[etree.Element]], None],
+        target: str | None = None,
+        node: Optional[etree.Element] = None,
+    ):
+        if node is not None:
+            event_handler = EventHandler(typename, listener, target, node)
+            event = parse_event(typename)
+            self._events.setdefault(event.__name__, EventGroup(event)).append(event_handler)
+            return self
+
+        nodes = (node for group in self._groups for node in group)
+        for node in filter(lambda n: n is not None, nodes):
+            if isinstance(node, EnterNode):
+                node = node._parent
+            event_handler = EventHandler(typename, listener, target, node)
+            event = parse_event(typename)
+            self._events.setdefault(event.__name__, EventGroup(event)).append(event_handler)
+        return self
+
+    def live(
+        self,
+        name: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        debug: bool | None = None,
+        use_reloader: bool = True,
+        loop: asyncio.AbstractEventLoop | None = None,
+        ca_certs: str | None = None,
+        certfile: str | None = None,
+        keyfile: str | None = None,
+        **kwargs: Any,
+    ):
+        app = CustomQuart(__name__ if name is None else name)
+
+
+        def prepare_html():
+            if not self._parents:
+                return "<html></html>"
+            node = self._parents[0]
+            tag = node.tag
+            script = EVENT_HEADERS + "".join(
+                group.listener_script()
+                for group in self._events.values()
+            )
+            if tag == "html":
+                body = self.select("body")
+                if body._groups:
+                    body.append("script").text(script)
+                    return str(self).replace("&lt;", "<").replace("&gt;", ">")
+                else:
+                    self.append("script").text(script)
+                    return str(self).replace("&lt;", "<").replace("&gt;", ">")
+            return f"<html><body>{self}<script>{script}</script></body></html>"
+
+        html = prepare_html()
+
+        @app.websocket("/ws")
+        async def ws():
+            previous_id = -1
+            while True:
+                event = orjson.loads(await websocket.receive())
+                print("Event received !")
+                event_type = event.get("type")
+                if event_type not in self._events:
+                    continue
+                typename = event.get("typename")
+                group = self._events[event_type]
+                event = group.event.from_json(event)
+
+                # Filter handlers by typename
+                print("Typename of the event:", typename)
+                print("Element ID of the event:", event.element_id)
+                handlers = filter(lambda h: h.typename == typename, group)
+                # Filter handlers by element_id when it is possible
+                if hasattr(event, "element_id"):
+                    element_id = int(event.element_id) if event.element_id else -1
+                    print(previous_id, element_id, typename)
+                    if previous_id == element_id == -1:
+                        print("All -1")
+                        continue
+                    elif previous_id != element_id:
+                        print("Different")
+                        mouseleave_handlers = list(filter(lambda h: h.typename == "mouseleave", group))
+                        handlers = chain(
+                            filter(lambda h: hash(h.node) == previous_id, mouseleave_handlers),
+                            filter(lambda h: hash(h.node) == element_id, handlers),
+                        )
+                        handlers = list(handlers)
+                        print(handlers)
+                        previous_id = element_id
+                    else:
+                        print("Same")
+                        element_id = int(event.element_id)
+                        previous_id = element_id
+                        handlers = filter(lambda h: hash(h.node) == element_id, handlers)
+
+                for handler in handlers:
+                    print(handler)
+                    if handler.node is None:
+                        handler.listener(event, None, None)
+                        element_id = hash(self.node())
+                        await websocket.send(
+                            orjson.dumps(
+                                {"elementId": element_id, "outerHTML": str(self)}
+                            )
+                        )
+                        continue
+                    node = handler.node
+                    current_sha256 = sha256(to_bytes(node)).digest()
+                    handler.listener(event, self._data.get(hash(node)), node)
+                    if current_sha256 != sha256(to_bytes(node)).digest():
+                        element_id = hash(node)
+                        await websocket.send(
+                            orjson.dumps(
+                                {"elementId": element_id, "outerHTML": to_string(node)}
+                            )
+                        )
+
+        @app.route("/")
+        async def index():
+            return html
+
+        app.run(
+            host,
+            port,
+            debug,
+            use_reloader,
+            loop,
+            ca_certs,
+            certfile,
+            keyfile,
+            **kwargs,
+        )
+
+    def to_string(self, pretty_print: bool = True) -> str:
+        """
+        Convert selection to string
+
+        Parameters
+        ----------
+        pretty_print : bool
+            :code:`True` to prettify output
+
+        Returns
+        -------
+        str
+            String
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> g = (
+        ...     svg.select_all("g")
+        ...     .data(list(reversed(range(10))))
+        ...     .enter()
+        ...     .append("g")
+        ...     .attr("class", lambda d: f"class{d}")
+        ... )
+        >>> print(svg.to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g class="class9"/>
+          <g class="class8"/>
+          <g class="class7"/>
+          <g class="class6"/>
+          <g class="class5"/>
+          <g class="class4"/>
+          <g class="class3"/>
+          <g class="class2"/>
+          <g class="class1"/>
+          <g class="class0"/>
+        </svg>
+        >>> print(svg.to_string(False))
+        <svg xmlns="http://www.w3.org/2000/svg"><g class="class9"/><g class="class8"/><g class="class7"/><g class="class6"/><g class="class5"/><g class="class4"/><g class="class3"/><g class="class2"/><g class="class1"/><g class="class0"/></svg>
+        >>> svg.to_string(False) == str(svg)
+        True
+        """
+        return super().to_string(pretty_print)
+
+    def to_repr(
+        self, show_enter: bool = True, show_exit: bool = True, show_data: bool = True
+    ) -> str:
+        """
+        Represents the selection with optional parameters.
+
+        Parameters
+        ----------
+        show_enter : bool
+            Show enter elements associated to this selection
+        show_exit : bool
+            Show exit elements associated to this selection
+        show_data : bool
+            Show data associated to this selection
+
+        Returns
+        -------
+        str
+            String
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> g = (
+        ...     svg.select_all("g")
+        ...     .data(list(reversed(range(10))))
+        ...     .enter()
+        ...     .append("g")
+        ...     .attr("class", lambda d: f"class{d}")
+        ... )
+        >>> print(g.to_repr())
+        Selection(
+            groups=[[g.class9, g.class8, g.class7, g.class6, g.class5, g.class4, g.class3, g.class2, g.class1, g.class0]],
+            parents=[svg],
+            enter=None,
+            exit=None,
+            data={<Element g at 0x7287cf850040>: 9, <Element g at 0x7287cfa50bc0>: 8, <Element g at 0x7287cf883ac0>: 7, <Element g at 0x7287cf8837c0>:
+         6, <Element g at 0x7287cf883e00>: 5, <Element g at 0x7287cf883a40>: 4, <Element g at 0x7287cf882fc0>: 3, <Element g at 0x7287cf883a80>: 2, <E
+        lement g at 0x7287cf880d80>: 1, <Element g at 0x7287cf881000>: 0},
+        )
+        """
+        return super().to_repr()
+
+    def __str__(self) -> str:
+        """
+        Returns the SVG content. Equivalent to
+        :code:`Selection.to_string(False)`.
+
+        Returns
+        -------
+        str
+            String
+        """
+        return super().__str__()
+
+    def __repr__(self) -> str:
+        """
+        Represents the selection
+
+        Returns
+        -------
+        str
+            String
+
+        Examples
+        --------
+
+        >>> svg = d3.create("svg")
+        >>> g = (
+        ...     svg.select_all("g")
+        ...     .data(list(reversed(range(10))))
+        ...     .enter()
+        ...     .append("g")
+        ...     .attr("class", lambda d: f"class{d}")
+        ... )
+        >>> print(repr(g))
+        Selection(
+            groups=[[g.class9, g.class8, g.class7, g.class6, g.class5, g.class4, g.class3, g.class2, g.class1, g.class0]],
+            parents=[svg],
+        )
+        """
+        return super().__repr__()
