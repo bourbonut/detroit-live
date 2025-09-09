@@ -1,29 +1,18 @@
 import asyncio
-from itertools import chain
-from hashlib import sha256
 from collections.abc import Callable, Iterator
 from collections import defaultdict
 from detroit.selection import Selection
 from detroit.selection.enter import EnterNode
 from detroit.selection.namespace import namespace
 from detroit.types import T, Accessor, EtreeFunction, Number
-import orjson
 from lxml import etree
-from quart import websocket
 from typing import Any, TypeVar, Optional
 
-from detroit_live.app import CustomQuart
-from detroit_live.diffdict import diffdict
+from detroit_live.live import Live
 from detroit_live.hashtree import HashTree
-from detroit_live.events import Event, EventGroup, EventHandler, parse_event, EVENT_HEADERS
+from detroit_live.events import Event, EventGroup, EventHandler, parse_event
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
-
-def to_bytes(node: etree.Element) -> bytes:
-    return etree.tostring(node).removesuffix(b"\n")
-
-def to_string(node: etree.Element) -> str:
-    return etree.tostring(node, method="html").decode("utf-8").removesuffix("\n")
 
 def creator(node: etree.Element, tree: HashTree, fullname: dict | None = None) -> etree.SubElement:
     """
@@ -1424,103 +1413,7 @@ class LiveSelection(Selection[T]):
         keyfile: str | None = None,
         **kwargs: Any,
     ):
-        app = CustomQuart(__name__ if name is None else name)
-
-
-        def prepare_html():
-            if self._tree is None:
-                return "<html></html>"
-            node = self._tree.root
-            tag = node.tag
-            script = EVENT_HEADERS + "".join(
-                group.listener_script()
-                for group in self._events.values()
-            )
-            if tag == "html":
-                body = self.select("body")
-                if body._groups:
-                    body.append("script").text(script)
-                    return str(self).replace("&lt;", "<").replace("&gt;", ">")
-                else:
-                    self.append("script").text(script)
-                    return str(self).replace("&lt;", "<").replace("&gt;", ">")
-            return f"<html><body>{self}<script>{script}</script></body></html>"
-
-        html = prepare_html()
-
-        @app.websocket("/ws")
-        async def ws():
-            previous_id = -1
-            while True:
-                event = orjson.loads(await websocket.receive())
-                event_type = event.get("type")
-                if event_type not in self._events:
-                    continue
-                typename = event.get("typename")
-                group = self._events[event_type]
-                event = group.event.from_json(event)
-
-                # Filter handlers by typename
-                handlers = filter(lambda h: h.typename == typename, group)
-                # Filter handlers by element_id when it is possible
-                if hasattr(event, "element_id"):
-                    element_id = int(event.element_id) if event.element_id else -1
-                    if previous_id == element_id == -1:
-                        continue
-                    elif previous_id != element_id:
-                        mouseleave_handlers = list(filter(lambda h: h.typename == "mouseleave", group))
-                        handlers = chain(
-                            filter(lambda h: h.node == previous_id, mouseleave_handlers),
-                            filter(lambda h: h.node == element_id, handlers),
-                        )
-                        handlers = list(handlers)
-                        previous_id = element_id
-                    else:
-                        element_id = int(event.element_id)
-                        previous_id = element_id
-                        handlers = filter(lambda h: h.node == element_id, handlers)
-
-                for handler in handlers:
-                    if handler.node is None:
-                        handler.listener(event, None, None)
-                        await websocket.send(
-                            orjson.dumps({"elementId": 0, "outerHTML": str(self)})
-                        )
-                        continue
-                    node = self._tree.get(handler.node)
-                    old_attrib = dict(node.attrib)
-                    current_sha256 = sha256(to_bytes(node)).digest()
-                    handler.listener(event, self._data.get(node), node)
-                    if current_sha256 != sha256(to_bytes(node)).digest():
-                        if len(node) == 0:
-                            new_attrib = dict(node.attrib)
-                            diff = diffdict(old_attrib, new_attrib)
-                            element_id = handler.node
-                            await websocket.send(
-                                orjson.dumps({"elementId": element_id, "diff": diff})
-                            )
-                        else:
-                            element_id = handler.node
-                            await websocket.send(
-                                orjson.dumps({"elementId": element_id, "outerHTML": to_string(node)})
-                            )
-
-
-        @app.route("/")
-        async def index():
-            return html
-
-        app.run(
-            host,
-            port,
-            debug,
-            use_reloader,
-            loop,
-            ca_certs,
-            certfile,
-            keyfile,
-            **kwargs,
-        )
+        Live(self).run(name, host, port, debug, use_reloader, loop, ca_certs, certfile, keyfile)
 
     def to_string(self, pretty_print: bool = True) -> str:
         """
