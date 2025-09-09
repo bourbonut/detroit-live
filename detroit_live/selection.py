@@ -13,6 +13,7 @@ from quart import websocket
 from typing import Any, TypeVar, Optional
 
 from detroit_live.app import CustomQuart
+from detroit_live.diffdict import diffdict
 from detroit_live.hashtree import HashTree
 from detroit_live.events import Event, EventGroup, EventHandler, parse_event, EVENT_HEADERS
 
@@ -22,7 +23,7 @@ def to_bytes(node: etree.Element) -> bytes:
     return etree.tostring(node).removesuffix(b"\n")
 
 def to_string(node: etree.Element) -> str:
-    return etree.tostring(node).decode("utf-8").removesuffix("\n")
+    return etree.tostring(node, method="html").decode("utf-8").removesuffix("\n")
 
 def creator(node: etree.Element, tree: HashTree, fullname: dict | None = None) -> etree.SubElement:
     """
@@ -1427,9 +1428,9 @@ class LiveSelection(Selection[T]):
 
 
         def prepare_html():
-            if not self._parents:
+            if self._tree is None:
                 return "<html></html>"
-            node = self._parents[0]
+            node = self._tree.root
             tag = node.tag
             script = EVENT_HEADERS + "".join(
                 group.listener_script()
@@ -1483,21 +1484,27 @@ class LiveSelection(Selection[T]):
                     if handler.node is None:
                         handler.listener(event, None, None)
                         await websocket.send(
-                            orjson.dumps(
-                                {"elementId": 0, "outerHTML": str(self)}
-                            )
+                            orjson.dumps({"elementId": 0, "outerHTML": str(self)})
                         )
                         continue
                     node = self._tree.get(handler.node)
+                    old_attrib = dict(node.attrib)
                     current_sha256 = sha256(to_bytes(node)).digest()
                     handler.listener(event, self._data.get(node), node)
                     if current_sha256 != sha256(to_bytes(node)).digest():
-                        element_id = handler.node
-                        await websocket.send(
-                            orjson.dumps(
-                                {"elementId": element_id, "outerHTML": to_string(node)}
+                        if len(node) == 0:
+                            new_attrib = dict(node.attrib)
+                            diff = diffdict(old_attrib, new_attrib)
+                            element_id = handler.node
+                            await websocket.send(
+                                orjson.dumps({"elementId": element_id, "diff": diff})
                             )
-                        )
+                        else:
+                            element_id = handler.node
+                            await websocket.send(
+                                orjson.dumps({"elementId": element_id, "outerHTML": to_string(node)})
+                            )
+
 
         @app.route("/")
         async def index():
@@ -1558,7 +1565,13 @@ class LiveSelection(Selection[T]):
         >>> svg.to_string(False) == str(svg)
         True
         """
-        return super().to_string(pretty_print)
+        if len(self._parents) == 0:
+            return ""
+        return (
+            etree.tostring(self._parents[0], pretty_print=pretty_print, method="html")
+            .decode("utf-8")
+            .removesuffix("\n")
+        )
 
     def to_repr(
         self, show_enter: bool = True, show_exit: bool = True, show_data: bool = True
@@ -1602,7 +1615,7 @@ class LiveSelection(Selection[T]):
         lement g at 0x7287cf880d80>: 1, <Element g at 0x7287cf881000>: 0},
         )
         """
-        return super().to_repr()
+        return super().to_repr(show_enter, show_exit, show_data)
 
     def __str__(self) -> str:
         """

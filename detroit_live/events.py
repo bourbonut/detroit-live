@@ -15,7 +15,11 @@ EVENT_HEADERS = (
     "function f(o, t){ o.typename = t; s.send(JSON.stringify(o, null, 0)); }"
     "s.addEventListener('message', (e) => { const r = new FileReader();"
     " r.onload = function(o) { const v = JSON.parse(o.target.result);"
-    " d.getElementById(v.elementId).outerHTML = v.outerHTML; };"
+    " const el = d.getElementById(v.elementId);"
+    " if (v.diff != undefined) {"
+    " v.diff.change.forEach(pair => el[pair[0]] = pair[1]);"
+    " v.diff.remove.forEach(pair => el[pair[0]] = undefined); }"
+    " else { el.outerHTML = v.outerHTML } };"
     " r.readAsText(e.data); });"
 )
 
