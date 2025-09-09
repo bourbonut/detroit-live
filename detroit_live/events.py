@@ -140,9 +140,11 @@ class EventHandler(Generic[T]):
         listener: Callable[[Event, T | None, Optional[etree.Element]], None],
         target: str | None = None,
         node: str | None = None,
+        extra_nodes: list[str] | None = None,
     ):
         self.typename = typename
         self.node = node
+        self.extra_nodes = extra_nodes
         self.target = parse_target(target, typename, node)
         self.listener = listener
 
@@ -150,6 +152,9 @@ class EventHandler(Generic[T]):
         target = NAMESPACE.get(self.target, self.target)
         typename = repr(self.typename)
         return f"{target}.addEventListener({typename}, (e) => f({event_json}, {typename}));"
+
+    def nodes(self):
+        return [self.node] + self.extra_nodes
 
     def __str__(self) -> str:
         return (

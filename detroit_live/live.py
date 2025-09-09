@@ -86,22 +86,28 @@ class Live:
             await send({"elementId": 0, "outerHTML": str(self.selection)})
             return
 
+        element_ids = handler.nodes()
+        nodes = [self.tree.get(node) for node in element_ids]
+        old_attribs = [dict(node.attrib) for node in nodes]
+        for i, node in enumerate(nodes):
+            old_attribs[i]["innerHTML"] = node.text
+        node_sha256 = [sha256(to_bytes(node)).digest() for node in nodes]
+
         node = self.tree.get(handler.node)
-        old_attrib = dict(node.attrib)
-        current_sha256 = sha256(to_bytes(node)).digest()
         handler.listener(event, self.data.get(node), node)
-        # No change
-        if current_sha256 == sha256(to_bytes(node)).digest():
-            return
 
-        element_id = handler.node
-        if len(node) == 0: # No child
-            new_attrib = dict(node.attrib)
-            diff = diffdict(old_attrib, new_attrib)
-            await send({"elementId": element_id, "diff": diff})
-            return
-
-        await send({"elementId": element_id, "outerHTML": to_string(node)})
+        # If any change
+        for i, element_id in enumerate(element_ids):
+            node = nodes[i]
+            old_attrib = old_attribs[i]
+            if node_sha256[i] != sha256(to_bytes(node)).digest():
+                if len(node) == 0: # No child
+                    new_attrib = dict(node.attrib)
+                    new_attrib["innerHTML"] = node.text
+                    diff = diffdict(old_attrib, new_attrib)
+                    await send({"elementId": element_id, "diff": diff})
+                else:
+                    await send({"elementId": element_id, "outerHTML": to_string(node)})
 
     def run(
         self,

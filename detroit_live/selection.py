@@ -1383,19 +1383,23 @@ class LiveSelection(Selection[T]):
         typename: str,
         listener: Callable[[Event, T | None, Optional[etree.Element]], None],
         target: str | None = None,
-        node: Optional[etree.Element] = None,
+        extra_nodes: list[etree.Element] | None = None,
     ):
-        if node is not None:
-            event_handler = EventHandler(typename, listener, target, self._tree.hash(node))
-            event = parse_event(typename)
-            self._events.setdefault(event.__name__, EventGroup(event)).append(event_handler)
-            return self
-
-        nodes = (node for group in self._groups for node in group)
+        extra_nodes = (
+            None if extra_nodes is None
+            else [self._tree.hash(node) for node in extra_nodes]
+        )
+        nodes = [node for group in self._groups for node in group]
         for node in filter(lambda n: n is not None, nodes):
             if isinstance(node, EnterNode):
                 node = node._parent
-            event_handler = EventHandler(typename, listener, target, self._tree.hash(node))
+            event_handler = EventHandler(
+                typename,
+                listener,
+                target,
+                self._tree.hash(node),
+                extra_nodes
+            )
             event = parse_event(typename)
             self._events.setdefault(event.__name__, EventGroup(event)).append(event_handler)
         return self
