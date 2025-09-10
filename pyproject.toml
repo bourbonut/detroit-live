@@ -8,6 +8,9 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
   "lxml",
+  "detroit",
+  "quart",
+  "orjson",
 ]
 classifiers = [
   "Programming Language :: Python",
