@@ -1,4 +1,5 @@
-from detroit_live.events import WindowSizeEvent, WheelEvent, MouseEvent
+from detroit_live.events import MouseEvent, WheelEvent, WindowSizeEvent
+
 
 def test_json_format_1():
     assert WindowSizeEvent.json_format() == (
@@ -8,9 +9,14 @@ def test_json_format_1():
         {"innerWidth": 100, "innerHeight": 200}
     ) == WindowSizeEvent(100, 200)
 
+
 def test_json_format_2():
-    assert WheelEvent.json_format() == "{type: 'WheelEvent', deltaX: event.deltaX, deltaY: event.deltaY}"
+    assert (
+        WheelEvent.json_format()
+        == "{type: 'WheelEvent', deltaX: event.deltaX, deltaY: event.deltaY}"
+    )
     assert WheelEvent.from_json({"deltaX": 10, "deltaY": 20}) == WheelEvent(10, 20)
+
 
 def test_json_format_3():
     assert MouseEvent.json_format() == (
