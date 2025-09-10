@@ -1,7 +1,6 @@
-import asyncio
 from collections.abc import Iterator
 from hashlib import sha256
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import orjson
 from lxml import etree
@@ -208,49 +207,24 @@ class Live:
                 else:
                     await send({"elementId": element_id, "outerHTML": to_string(node)})
 
-    def run(
-        self,
-        name: str | None = None,
-        host: str | None = None,
-        port: int | None = None,
-        debug: bool | None = None,
-        use_reloader: bool = True,
-        loop: asyncio.AbstractEventLoop | None = None,
-        ca_certs: str | None = None,
-        certfile: str | None = None,
-        keyfile: str | None = None,
-        **kwargs: Any,
-    ):
+    def create_app(self, name: str | None = None) -> CustomQuart:
         """
-        Runs the selection into an asynchronous application with interactivity
-        through events.
+        Creates an application for allowing interactivity.
 
         This is best used for development only, see Hypercorn for production
         servers.
 
         Parameters
         ----------
-        host : str | None
-            Hostname to listen on. By default this is loopback only, use
-            0.0.0.0 to have the server listen externally.
-        port : int | None
-            Port number to listen on.
-        debug : bool | None
-            If set enable (or disable) debug mode and debug output.
-        use_reloader : bool
-            Automatically reload on code changes.
-        loop : asyncio.AbstractEventLoop | None
-            Asyncio loop to create the server in, if None, take default one. If
-            specified it is the caller's responsibility to close and cleanup
-            the loop.
-        ca_certs : str | None
-            Path to the SSL CA certificate file.
-        certfile : str | None
-            Path to the SSL certificate file.
-        keyfile : str | None
-            Path to the SSL key file.
+        name : str | None
+            Name of the application
+
+        Returns
+        -------
+        CustomQuart
+            Application
         """
-        app = CustomQuart(__name__ if name is None else name)
+        app = CustomQuart("detroit-live" if name is None else name)
 
         @app.websocket("/ws")
         async def ws():
@@ -264,15 +238,5 @@ class Live:
         @app.route("/")
         async def index():
             return self.html
-
-        app.run(
-            host,
-            port,
-            debug,
-            use_reloader,
-            loop,
-            ca_certs,
-            certfile,
-            keyfile,
-            **kwargs,
-        )
+        
+        return app

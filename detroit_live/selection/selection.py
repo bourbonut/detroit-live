@@ -9,7 +9,14 @@ from detroit.selection.namespace import namespace
 from detroit.types import Accessor, EtreeFunction, Number, T
 from lxml import etree
 
-from ..live import Event, EventGroup, EventHandler, Live, parse_event
+from ..live import (
+    CustomQuart,
+    Event,
+    EventGroup,
+    EventHandler,
+    Live,
+    parse_event,
+)
 from .hashtree import HashTree
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
@@ -1428,6 +1435,25 @@ class LiveSelection(Selection[T]):
             )
         return self
 
+    def to_app(self, name: str | None = None) -> CustomQuart:
+        """
+        Creates an application for allowing interactivity.
+
+        This is best used for development only, see Hypercorn for production
+        servers.
+
+        Parameters
+        ----------
+        name : str | None
+            Name of the application
+
+        Returns
+        -------
+        CustomQuart
+            Application
+        """
+        return Live(self).create_app(name)
+
     def live(
         self,
         name: str | None = None,
@@ -1450,6 +1476,8 @@ class LiveSelection(Selection[T]):
 
         Parameters
         ----------
+        name : str | None
+            Name of the application. Default :code:`__name__`
         host : str | None
             Hostname to listen on. By default this is loopback only, use
             0.0.0.0 to have the server listen externally.
@@ -1470,8 +1498,15 @@ class LiveSelection(Selection[T]):
         keyfile : str | None
             Path to the SSL key file.
         """
-        Live(self).run(
-            name, host, port, debug, use_reloader, loop, ca_certs, certfile, keyfile
+        self.to_app(name).run(
+            host,
+            port,
+            debug,
+            use_reloader,
+            loop,
+            ca_certs,
+            certfile,
+            keyfile,
         )
 
     def to_string(self, pretty_print: bool = True) -> str:
