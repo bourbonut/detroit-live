@@ -7,8 +7,8 @@ import orjson
 from lxml import etree
 from quart import websocket
 
-from detroit_live.diffdict import diffdict
-from detroit_live.events import EVENT_HEADERS, Event, EventGroup, EventHandler
+from .diffdict import diffdict
+from .events import EVENT_HEADERS, Event, EventGroup, EventHandler
 
 from .app import CustomQuart
 

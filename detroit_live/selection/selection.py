@@ -9,9 +9,8 @@ from detroit.selection.namespace import namespace
 from detroit.types import Accessor, EtreeFunction, Number, T
 from lxml import etree
 
-from detroit_live.events import Event, EventGroup, EventHandler, parse_event
-from detroit_live.hashtree import HashTree
-from detroit_live.live import Live
+from ..live import Event, EventGroup, EventHandler, Live, parse_event
+from .hashtree import HashTree
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
 
