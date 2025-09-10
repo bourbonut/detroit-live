@@ -1,7 +1,8 @@
-from dataclasses import dataclass
 from abc import ABC, abstractclassmethod
 from collections.abc import Callable, Iterator
-from typing import TypeVar, Any, Generic, Optional
+from dataclasses import dataclass
+from typing import Any, Generic, Optional, TypeVar
+
 from lxml import etree
 
 T = TypeVar("T")
@@ -30,9 +31,11 @@ NAMESPACE = {
     "window": "w",
 }
 
+
 def snake_to_camel(string: str) -> str:
-    strings = string.split('_')
-    return ''.join(strings[:1] + [word.title() for word in strings[1:]])
+    strings = string.split("_")
+    return "".join(strings[:1] + [word.title() for word in strings[1:]])
+
 
 def json_format(cls: type[Self], prefix: str, mapping: dict[str, str]) -> str:
     attrs = list(cls.__annotations__)
@@ -40,23 +43,25 @@ def json_format(cls: type[Self], prefix: str, mapping: dict[str, str]) -> str:
     attrs = map(snake_to_camel, attrs)
     parts = [f"type: {repr(cls.__name__)}"]
     parts += [f"{attr}: {prefix}.{target}" for attr, target in zip(attrs, targets)]
-    return f"{{{", ".join(parts)}}}"
+    return f"{{{', '.join(parts)}}}"
+
 
 def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
     return cls(*(content[snake_to_camel(attr)] for attr in cls.__annotations__))
 
+
 class JsonFormat(ABC):
     @abstractclassmethod
-    def json_format(cls: type[Self]) -> str:
-        ...
+    def json_format(cls: type[Self]) -> str: ...
+
 
 class FromJson(ABC):
     @abstractclassmethod
-    def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
-        ...
+    def from_json(cls: type[Self], content: dict[str, Any]) -> Self: ...
 
-class Event(JsonFormat, FromJson):
-    ...
+
+class Event(JsonFormat, FromJson): ...
+
 
 @dataclass
 class WindowSizeEvent(Event):
@@ -71,6 +76,7 @@ class WindowSizeEvent(Event):
     def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
         return from_json(cls, content)
 
+
 @dataclass
 class WheelEvent(Event):
     delta_x: int
@@ -83,6 +89,7 @@ class WheelEvent(Event):
     @classmethod
     def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
         return from_json(cls, content)
+
 
 @dataclass
 class MouseEvent(Event):
@@ -100,6 +107,7 @@ class MouseEvent(Event):
     @classmethod
     def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
         return from_json(cls, content)
+
 
 def parse_target(
     target: str | None = None,
@@ -122,6 +130,7 @@ def parse_target(
         case _:
             return "document"
 
+
 def parse_event(typename: str | None = None) -> type[Event]:
     match typename:
         case "open":
@@ -132,6 +141,7 @@ def parse_event(typename: str | None = None) -> type[Event]:
             return WheelEvent
         case _:
             return MouseEvent
+
 
 class EventHandler(Generic[T]):
     def __init__(
@@ -165,6 +175,7 @@ class EventHandler(Generic[T]):
     def __repr__(self) -> str:
         return str(self)
 
+
 class EventGroup(Generic[T]):
     def __init__(self, event: type[Event]):
         self.event = event
@@ -197,7 +208,9 @@ class EventGroup(Generic[T]):
             return "".join(listeners)
         else:
             event_json = self.event_json()
-            return "".join(handler.listener_script(event_json) for handler in self.handlers)
+            return "".join(
+                handler.listener_script(event_json) for handler in self.handlers
+            )
 
     def event_type(self) -> str:
         return self.event.__name__

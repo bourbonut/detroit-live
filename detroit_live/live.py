@@ -1,28 +1,77 @@
-from collections.abc import Iterator
-from quart import websocket
-from lxml import etree
 import asyncio
-import orjson
-from .app import CustomQuart
-from typing import TypeVar, Any
-from itertools import chain
+from collections.abc import Iterator
 from hashlib import sha256
+from typing import Any, TypeVar
 
-from detroit_live.events import EVENT_HEADERS, Event, EventHandler, EventGroup
+import orjson
+from lxml import etree
+from quart import websocket
+
 from detroit_live.diffdict import diffdict
+from detroit_live.events import EVENT_HEADERS, Event, EventGroup, EventHandler
+
+from .app import CustomQuart
 
 LiveSelection = TypeVar("LiveSelection")
 
+
 def to_bytes(node: etree.Element) -> bytes:
+    """
+    Converts a node element into bytes.
+
+    Parameters
+    ----------
+    node : etree.Element
+        Node element
+
+    Returns
+    -------
+    bytes
+        Bytes content of the node
+    """
     return etree.tostring(node).removesuffix(b"\n")
 
+
 def to_string(node: etree.Element) -> str:
+    """
+    Converts a node element into text.
+
+    Parameters
+    ----------
+    node : etree.Element
+        Node element
+
+    Returns
+    -------
+    str
+        Text content of the node.
+    """
     return etree.tostring(node, method="html").decode("utf-8").removesuffix("\n")
 
+
 async def send(json: dict):
+    """
+    Sends a json content message through websocket.
+
+    Parameters
+    ----------
+    json : dict
+        JSON message
+    """
     await websocket.send(orjson.dumps(json))
 
+
 class Live:
+    """
+    Live object which helps to make a interactive application through
+    websocket.
+
+    Parameters
+    ----------
+    selection : LiveSelection
+        Live Selection
+    """
+
     def __init__(self, selection: LiveSelection):
         self.selection = selection
         self.tree = self.selection._tree
@@ -31,17 +80,26 @@ class Live:
         self.html = self.prepare_html()
         self.previous_id = ""
 
-    def prepare_html(self):
+    def prepare_html(self) -> str:
+        """
+        Generates HTML content containing scripts for events
+
+        Returns
+        -------
+        str
+            HTML content
+        """
         if self.tree is None:
             return "<html></html>"
         node = self.tree.root
         tag = node.tag
         script = EVENT_HEADERS + "".join(
-            group.listener_script()
-            for group in self.events.values()
+            group.listener_script() for group in self.events.values()
         )
         if tag != "html":
-            return f"<html><body>{self.selection}<script>{script}</script></body></html>"
+            return (
+                f"<html><body>{self.selection}<script>{script}</script></body></html>"
+            )
         body = self.selection.select("body")
         if body._groups:
             body.append("script").text(script)
@@ -50,27 +108,58 @@ class Live:
             self.append("script").text(script)
             return str(self.selection).replace("&lt;", "<").replace("&gt;", ">")
 
-    def filter_handlers(self, event: Event, typename: str, group: EventGroup) -> Iterator[EventHandler]:
+    def filter_handlers(
+        self, event: Event, typename: str, group: EventGroup
+    ) -> Iterator[EventHandler]:
+        """
+        Filters event handlers of a group given the event and the event
+        typename.
+
+        Parameters
+        ----------
+        event : Event
+            Event
+        typename : str
+            Event typename
+        group : EventGroup
+            Group of event handlers
+
+        Returns
+        -------
+        Iterator[EventHandler]
+            Iterator of filtered event handlers
+        """
         # Filter handlers by typename
         handlers = [h for h in group if h.typename == typename]
 
         # Filter handlers by element_id when it is possible
         if hasattr(event, "element_id"):
             element_id = event.element_id
-            if self.previous_id == element_id == "": # Unknown element ID
+            if self.previous_id == element_id == "":  # Unknown element ID
                 return
-            elif self.previous_id != element_id: # New element ID
+            elif self.previous_id != element_id:  # New element ID
                 mouseleave = [
-                    h for h in group
+                    h
+                    for h in group
                     if h.node == self.previous_id and h.typename == "mouseleave"
                 ]
                 handlers = mouseleave + [h for h in handlers if h.node == element_id]
                 self.previous_id = element_id
-            else: # Same ID
+            else:  # Same ID
                 handlers = [h for h in handlers if h.node == element_id]
         return handlers
 
     async def propagate_event(self, event: Event, event_type: str):
+        """
+        Propagate an event through its corresponding handlers.
+
+        Parameters
+        ----------
+        event : Event
+            Event
+        event_type : str
+            Event type
+        """
         typename = event.get("typename")
         group = self.events[event_type]
         event = group.event.from_json(event)
@@ -79,6 +168,17 @@ class Live:
                 await self.handle_event(handler, event)
 
     async def handle_event(self, handler: EventHandler, event: Event):
+        """
+        Handles an event by calling its listener and sends the updated
+        information message through websocket.
+
+        Parameters
+        ----------
+        handler : EventHandler
+            Event handler
+        event : Event
+            Event
+        """
         # No specific node
         if handler.node is None:
             handler.listener(event, None, None)
@@ -100,7 +200,7 @@ class Live:
             node = nodes[i]
             old_attrib = old_attribs[i]
             if node_sha256[i] != sha256(to_bytes(node)).digest():
-                if len(node) == 0: # No child
+                if len(node) == 0:  # No child
                     new_attrib = dict(node.attrib)
                     new_attrib["innerHTML"] = node.text
                     diff = diffdict(old_attrib, new_attrib)
@@ -120,7 +220,36 @@ class Live:
         certfile: str | None = None,
         keyfile: str | None = None,
         **kwargs: Any,
-    ): 
+    ):
+        """
+        Runs the selection into an asynchronous application with interactivity
+        through events.
+
+        This is best used for development only, see Hypercorn for production
+        servers.
+
+        Parameters
+        ----------
+        host : str | None
+            Hostname to listen on. By default this is loopback only, use
+            0.0.0.0 to have the server listen externally.
+        port : int | None
+            Port number to listen on.
+        debug : bool | None
+            If set enable (or disable) debug mode and debug output.
+        use_reloader : bool
+            Automatically reload on code changes.
+        loop : asyncio.AbstractEventLoop | None
+            Asyncio loop to create the server in, if None, take default one. If
+            specified it is the caller's responsibility to close and cleanup
+            the loop.
+        ca_certs : str | None
+            Path to the SSL CA certificate file.
+        certfile : str | None
+            Path to the SSL certificate file.
+        keyfile : str | None
+            Path to the SSL key file.
+        """
         app = CustomQuart(__name__ if name is None else name)
 
         @app.websocket("/ws")
@@ -131,7 +260,6 @@ class Live:
                 if event_type not in self.events:
                     continue
                 await self.propagate_event(event, event_type)
-
 
         @app.route("/")
         async def index():

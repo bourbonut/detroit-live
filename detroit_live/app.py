@@ -1,12 +1,14 @@
-from quart import Quart
-from quart.helpers import get_debug_flag
-from quart.utils import observe_changes, MustReloadError, restart
-from quart.app import _cancel_all_tasks
-from typing import Any
 import asyncio
 import os
 import signal
 import warnings
+from typing import Any
+
+from quart import Quart
+from quart.app import _cancel_all_tasks
+from quart.helpers import get_debug_flag
+from quart.utils import MustReloadError, observe_changes, restart
+
 
 class CustomQuart(Quart):
     def run(
@@ -21,23 +23,33 @@ class CustomQuart(Quart):
         keyfile: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Run this application.
+        """
+        Run this application.
 
-        This is best used for development only, see Hypercorn for
-        production servers.
+        This is best used for development only, see Hypercorn for production
+        servers.
 
-        Arguments:
-            host: Hostname to listen on. By default this is loopback
-                only, use 0.0.0.0 to have the server listen externally.
-            port: Port number to listen on.
-            debug: If set enable (or disable) debug mode and debug output.
-            use_reloader: Automatically reload on code changes.
-            loop: Asyncio loop to create the server in, if None, take default one.
-                If specified it is the caller's responsibility to close and cleanup the
-                loop.
-            ca_certs: Path to the SSL CA certificate file.
-            certfile: Path to the SSL certificate file.
-            keyfile: Path to the SSL key file.
+        Parameters
+        ----------
+        host : str | None
+            Hostname to listen on. By default this is loopback only, use
+            0.0.0.0 to have the server listen externally.
+        port : int | None
+            Port number to listen on.
+        debug : bool | None
+            If set enable (or disable) debug mode and debug output.
+        use_reloader : bool
+            Automatically reload on code changes.
+        loop : asyncio.AbstractEventLoop | None
+            Asyncio loop to create the server in, if None, take default one. If
+            specified it is the caller's responsibility to close and cleanup
+            the loop.
+        ca_certs : str | None
+            Path to the SSL CA certificate file.
+        certfile : str | None
+            Path to the SSL certificate file.
+        keyfile : str | None
+            Path to the SSL key file.
         """
         if kwargs:
             warnings.warn(

@@ -1,6 +1,6 @@
+from detroit.selection.namespace import namespace
 from lxml import etree
 
-from detroit.selection.namespace import namespace
 from .selection import LiveSelection
 
 

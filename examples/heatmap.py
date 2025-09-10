@@ -1,8 +1,10 @@
 # https://d3-graph-gallery.com/graph/interactivity_tooltip.html#template
-import detroit_live as d3live
+from collections import namedtuple
+
 import detroit as d3
 import polars as pl
-from collections import namedtuple
+
+import detroit_live as d3live
 
 style = """
 .tooltip {
@@ -35,8 +37,7 @@ html.append("style").text(style)
 body = html.append("body").append("div")
 
 svg = (
-    body
-    .append("svg")
+    body.append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
     .append("g")
@@ -64,11 +65,12 @@ y = d3.scale_band().set_range([height, 0]).set_domain(variables).set_padding(0.0
     .remove()
 )
 
-color = d3.scale_sequential().set_interpolator(d3.interpolate_inferno).set_domain([1, 100])
+color = (
+    d3.scale_sequential().set_interpolator(d3.interpolate_inferno).set_domain([1, 100])
+)
 
 (
-    tooltip
-    .style("opacity", 0)
+    tooltip.style("opacity", 0)
     .attr("class", "tooltip")
     .style("background-color", "white")
     .style("border", "solid")
@@ -77,9 +79,11 @@ color = d3.scale_sequential().set_interpolator(d3.interpolate_inferno).set_domai
     .style("padding", "5px")
 )
 
+
 def mouseover(event, d, node):
     tooltip.style("opacity", 1)
     d3.select(node).style("stroke", "black").style("opacity", 1)
+
 
 def mousemove(event, d, node):
     (
@@ -88,19 +92,18 @@ def mousemove(event, d, node):
         .style("top", f"{event.client_y}px")
     )
 
+
 def mouseleave(event, d, node):
     tooltip.style("opacity", 0)
-    (
-        d3.select(node)
-        .style("stroke", "none")
-        .style("opacity", 0.8)
-    )
+    (d3.select(node).style("stroke", "none").style("opacity", 0.8))
+
 
 def key_data(d):
     if isinstance(d, str) or d is None:
         return ""
     else:
         return f"{d['group']}:{d['variable']}"
+
 
 (
     svg.select_all()

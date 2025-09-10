@@ -1,20 +1,24 @@
 import asyncio
-from collections.abc import Callable, Iterator
 from collections import defaultdict
+from collections.abc import Callable, Iterator
+from typing import Any, Optional, TypeVar
+
 from detroit.selection import Selection
 from detroit.selection.enter import EnterNode
 from detroit.selection.namespace import namespace
-from detroit.types import T, Accessor, EtreeFunction, Number
+from detroit.types import Accessor, EtreeFunction, Number, T
 from lxml import etree
-from typing import Any, TypeVar, Optional
 
-from detroit_live.live import Live
-from detroit_live.hashtree import HashTree
 from detroit_live.events import Event, EventGroup, EventHandler, parse_event
+from detroit_live.hashtree import HashTree
+from detroit_live.live import Live
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
 
-def creator(node: etree.Element, tree: HashTree, fullname: dict | None = None) -> etree.SubElement:
+
+def creator(
+    node: etree.Element, tree: HashTree, fullname: dict | None = None
+) -> etree.SubElement:
     """
     Creates a subnode associated to :code:`node`.
 
@@ -1227,7 +1231,9 @@ class LiveSelection(Selection[T]):
             events=self._events,
         )
 
-    def call(self, func: Callable[[TLiveSelection, ...], Any], *args: Any) -> TLiveSelection:
+    def call(
+        self, func: Callable[[TLiveSelection, ...], Any], *args: Any
+    ) -> TLiveSelection:
         """
         Invokes the specified function exactly once, passing in this selection
         along with any optional arguments. Returns this selection.
@@ -1384,9 +1390,30 @@ class LiveSelection(Selection[T]):
         listener: Callable[[Event, T | None, Optional[etree.Element]], None],
         target: str | None = None,
         extra_nodes: list[etree.Element] | None = None,
-    ):
+    ) -> TLiveSelection:
+        """
+        Adds a listener to each selected element for the specified event
+        typename.
+
+        Parameters
+        ----------
+        typename : str
+            Event typename
+        listener : Callable[[Event, T | None, Optional[etree.Element]], None]
+            Listener function
+        target : str | None
+            Target on which the event listener is added
+        extra_nodes : list[etree.Element] | None
+            Extra nodes to update when the listener is called
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+        """
         extra_nodes = (
-            None if extra_nodes is None
+            None
+            if extra_nodes is None
             else [self._tree.hash(node) for node in extra_nodes]
         )
         nodes = [node for group in self._groups for node in group]
@@ -1394,14 +1421,12 @@ class LiveSelection(Selection[T]):
             if isinstance(node, EnterNode):
                 node = node._parent
             event_handler = EventHandler(
-                typename,
-                listener,
-                target,
-                self._tree.hash(node),
-                extra_nodes
+                typename, listener, target, self._tree.hash(node), extra_nodes
             )
             event = parse_event(typename)
-            self._events.setdefault(event.__name__, EventGroup(event)).append(event_handler)
+            self._events.setdefault(event.__name__, EventGroup(event)).append(
+                event_handler
+            )
         return self
 
     def live(
@@ -1417,7 +1442,38 @@ class LiveSelection(Selection[T]):
         keyfile: str | None = None,
         **kwargs: Any,
     ):
-        Live(self).run(name, host, port, debug, use_reloader, loop, ca_certs, certfile, keyfile)
+        """
+        Runs the selection into an asynchronous application with interactivity
+        through events.
+
+        This is best used for development only, see Hypercorn for
+        production servers.
+
+        Parameters
+        ----------
+        host : str | None
+            Hostname to listen on. By default this is loopback only, use
+            0.0.0.0 to have the server listen externally.
+        port : int | None
+            Port number to listen on.
+        debug : bool | None
+            If set enable (or disable) debug mode and debug output.
+        use_reloader : bool
+            Automatically reload on code changes.
+        loop : asyncio.AbstractEventLoop | None
+            Asyncio loop to create the server in, if None, take default one. If
+            specified it is the caller's responsibility to close and cleanup
+            the loop.
+        ca_certs : str | None
+            Path to the SSL CA certificate file.
+        certfile : str | None
+            Path to the SSL certificate file.
+        keyfile : str | None
+            Path to the SSL key file.
+        """
+        Live(self).run(
+            name, host, port, debug, use_reloader, loop, ca_certs, certfile, keyfile
+        )
 
     def to_string(self, pretty_print: bool = True) -> str:
         """
