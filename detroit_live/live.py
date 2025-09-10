@@ -29,7 +29,7 @@ class Live:
         self.events = self.selection._events
         self.data = self.selection._data
         self.html = self.prepare_html()
-        self.previous_id = -1
+        self.previous_id = ""
 
     def prepare_html(self):
         if self.tree is None:
@@ -52,23 +52,22 @@ class Live:
 
     def filter_handlers(self, event: Event, typename: str, group: EventGroup) -> Iterator[EventHandler]:
         # Filter handlers by typename
-        handlers = filter(lambda h: h.typename == typename, group)
+        handlers = [h for h in group if h.typename == typename]
 
         # Filter handlers by element_id when it is possible
         if hasattr(event, "element_id"):
-            element_id = int(event.element_id) if event.element_id else -1
-            if self.previous_id == element_id == -1: # Unknown element ID
+            element_id = event.element_id
+            if self.previous_id == element_id == "": # Unknown element ID
                 return
             elif self.previous_id != element_id: # New element ID
-                mouseleave_handlers = filter(lambda h: h.typename == "mouseleave", group)
-                handlers = chain(
-                    filter(lambda h: h.node == self.previous_id, mouseleave_handlers),
-                    filter(lambda h: h.node == element_id, handlers),
-                )
-                handlers = list(handlers)
+                mouseleave = [
+                    h for h in group
+                    if h.node == self.previous_id and h.typename == "mouseleave"
+                ]
+                handlers = mouseleave + [h for h in handlers if h.node == element_id]
                 self.previous_id = element_id
             else: # Same ID
-                handlers = filter(lambda h: h.node == element_id, handlers)
+                handlers = [h for h in handlers if h.node == element_id]
         return handlers
 
     async def propagate_event(self, event: Event, event_type: str):

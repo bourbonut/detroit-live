@@ -1,4 +1,5 @@
 from lxml import etree
+from hashlib import sha1
 
 def get_root(node: etree.Element) -> etree.Element:
     parent = node.getparent()
@@ -16,7 +17,9 @@ class HashTree:
         return self._root
 
     def hash(self, node: etree.Element):
-        return hash((self._tree.getelementpath(node), node)) // 1000
+        path = self._tree.getelementpath(node)
+        path = f"{path}[1]" if path[-1] != "]" else path
+        return sha1(path.encode()).hexdigest()[:16]
 
     def insert(self, node: etree.Element) -> str:
         hash_key = self.hash(node)
