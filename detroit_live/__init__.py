@@ -1,3 +1,4 @@
+from .dispatch import dispatch
 from .selection import live_create
 from .timer import (
     interval,
@@ -7,6 +8,7 @@ from .timer import (
 )
 
 __all__ = [
+    "dispatch",
     "interval",
     "live_create",
     "now",
