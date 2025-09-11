@@ -1,3 +1,3 @@
-from .dispatch import dispatch
+from .dispatch import Dispatch, dispatch
 
-__all__ = ["dispatch"]
+__all__ = ["Dispatch", "dispatch"]
