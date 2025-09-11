@@ -1,64 +1,57 @@
+from collections.abc import Callable
 from copy import deepcopy
+from typing import Any, TypeAlias, TypeVar
 import re
+
+Callback: TypeAlias = Callable[..., None]
+NamedCallback: TypeAlias = tuple[str, Callback]
+TDispatch = TypeVar("Dispatch", bound="Dispatch")
 
 TYPENAME_PATTERN = re.compile(r"^|\s+")
 
+def get_type(callbacks: list[NamedCallback], refname: str) -> Callback | None:
+    for name, callback in callbacks:
+        if name == refname:
+            return callback
 
-class Noop:
-    def value(self):
-        return
-
-
-def get_type(type_list, name):
-    for c in type_list:
-        if c["name"] == name:
-            return c["value"]
-
-
-def set_type(typename, name, callback):
-    for i in range(len(typename)):
-        if typename[i]["name"] == name:
-            typename[i] = Noop()
-            typename = typename[0:i] + typename[i + 1:]
+def update_callbacks(callbacks: list[NamedCallback], refname: str, callback: Callback):
+    for i, (name, _) in enumerate(callbacks):
+        if name == refname:
+            callbacks.pop(i)
             break
     if callback is not None:
-        typename.append({"name": name, "value": callback})
-    return typename
-
+        callbacks.append((refname, callback))
 
 class Dispatch:
-    def __init__(self, typenames):
+    def __init__(self, typenames: dict[list[NamedCallback]]):
         self._typenames = typenames
 
-    def __call__(self, typename, that, *args):
+    def __call__(self, typename: str, *args: Any):
         if typename not in self._typenames:
             raise ValueError(f"Unknown type: {typename!r}")
-        for typ in self._typenames[typename]:
-            typ["value"](that, *args)
+        for name, callback in self._typenames[typename]:
+            callback(*args)
 
-    def on(self, parsed_types, callback):
-        parsed_types = self.parse_typenames(parsed_types)
+    def on(self, typename: str, callback: Callback) -> TDispatch:
+        parsed_types = self.parse_typenames(typename)
         if not callable(callback):
             raise TypeError("'callback' must be a function")
-        for parsed_type in parsed_types:
-            if typename := parsed_type.get("type"):
-                self._typenames[typename] = set_type(
-                    self._typenames[typename], parsed_type["name"], callback
-                )
+        for typename, name in parsed_types:
+            if typename:
+                update_callbacks(self._typenames[typename], name, callback)
             elif callback is None:
                 for typename in self._typenames:
-                    self._typenames[typename] = set_type(
-                        self._typenames[typename], parsed_type["name"], None
-                    )
+                    update_callbacks(self._typenames[typename], name, None)
         return self
 
-    def get_callback(self, typenames):
-        for typename in self.parse_typenames(typenames):
-            if typ := typename.get("type"):
-                if found := get_type(self._typenames[typ], typename["name"]):
-                    return found
+    def get_callback(self, typename: str) -> Callback | None:
+        for typename, name in self.parse_typenames(typename):
+            if not typename:
+                continue
+            if found := get_type(self._typenames[typename], name):
+                return found
 
-    def parse_typenames(self, typenames):
+    def parse_typenames(self, typenames: str) -> list[tuple[str, str]]:
         values = []
         for typename in TYPENAME_PATTERN.split(typenames.strip())[1:]:
             name = ""
@@ -69,7 +62,7 @@ class Dispatch:
                     typename = typename[0:i]
             if typename and typename not in self._typenames:
                 raise ValueError(f"Unknown type: {typename!r}")
-            values.append({"type": typename, "name": name})
+            values.append((typename, name))
         return values
 
     def copy(self):
@@ -79,7 +72,7 @@ class Dispatch:
         return f"Dispatch({self._typenames})"
 
 
-def dispatch(*typenames):
+def dispatch(*typenames: str) -> Dispatch:
     dispatch_typenames = {}
     for typename in typenames:
         if (
