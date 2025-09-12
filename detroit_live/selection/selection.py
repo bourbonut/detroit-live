@@ -81,6 +81,10 @@ class LiveSelection(Selection[T]):
         List of existing DOM elements in the selection for which no new datum was found.
     data : dict[etree.Element, T] | None = None
         Association between nodes and its data
+    tree : HashTree | None
+        Object which helps to get a unique ID for each node
+    events : dict[str, list[EventHandler]] | None
+        Groups of event handlers
 
     Examples
     --------
