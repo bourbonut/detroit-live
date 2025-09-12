@@ -2,6 +2,7 @@ from collections.abc import Callable
 from .event import DragEvent
 from .nodrag import nodrag, yesdrag
 from ..dispatch import dispatch
+from ..live import pointer, MouseEvent
 from ..selection import LiveSelection, select
 
 def constant(x):
@@ -13,6 +14,65 @@ def default_filter(event, _):
 
 def default_subject(event, d):
     return {"x": event.x, "y": event.y} if d is None else d
+
+
+class Gesture:
+
+    def __init__(
+        self,
+        drag,
+        event,
+        d,
+        identifier,
+        dispatch,
+        subject,
+        p: tuple[float, float]
+    ):
+        self._dispatch = dispatch
+        self._d = d
+        self._drag = drag
+        self._p = p
+        self._subject = subject
+        self._event = event
+        self._identifier = identifier
+        self._dx = subject.x - p[0]
+        self._dy = subject.y - p[1]
+
+    def gesture(self, typename: str, event: MouseEvent, touch=None):
+        p0 = self._p
+        n = 0
+        match typename:
+            case "start":
+                self._gestures[self._identifier] = self.gesture
+                n = self._active
+                self._active += 1
+            case "end":
+                self._gestures.pop(self._identifier)
+                self._active -= 1
+                n = self._active
+            case "drag":
+                self._p = pointer(touch or event)
+                n = self._active
+
+        self._dispatch(
+            typename,
+            self,
+            DragEvent(
+                event_type=typename,
+                source_event=event,
+                subject=self._subject,
+                target=self,
+                identifier=self._identifier,
+                active=n,
+                x=self._p[0] + self._dx,
+                y=self._p[1] + self._dy,
+                dx=self._p[0] - p0[0],
+                dy=self._p[1] - p0[1],
+                dispatch=self._dispatch,
+            ),
+            self._d
+        )
+
 
 class Drag:
 
@@ -47,64 +107,31 @@ class Drag:
             .style("-webkit-tap-highlight-color", "rgba(0,0,0,0)")
         )
 
-    def _before_start(self, container, event, d, identifier, touch):
-        dispatch_copy = self._listeners.copy()
-        p = event
-        drag_event = DragEvent(
+    def _before_start(self, event, d, identifier, touch=None):
+        dispatch = self._listeners.copy()
+        p = pointer(touch or event)
+        subject = self._subject(DragEvent(
             event_type="beforestart",
             source_event=event,
             subject=None,
             target=self,
             identifier=identifier,
             active=self._active,
-            x=p.client_x,
-            y=p.client_y,
+            x=p[0],
+            y=p[1],
             dx=0,
             dy=0,
-            dispatch=dispatch_copy
+            dispatch=dispatch,
+        ), d)
+        return (
+            None if subject is None
+            else Gesture(self, event, d, identifier, dispatch, subject, p)
         )
-        s = self._subject(drag_event, d)
-        if s is None:
-            return
-
-        dx = s.x - p.client_x
-        dy = s.x - p.client_y
-
-        def gesture(typename, event, touch):
-            p0 = p
-            n = 0
-            match typename:
-                case "start":
-                    self._gestures[identifier] = gesture
-                    n = self._active
-                    self._active += 1
-                case "end":
-                    self._gestures.pop(identifier)
-                    self._active -= 1
-                    n = self._active
-                case "drag":
-                    n = self._active
-
-            drag_event = DragEvent(
-                event_type=typename,
-                source_event=event,
-                subject=s,
-                target=self,
-                identifier=identifier,
-                active=n,
-                x=p.client_x + dx,
-                y=p.client_y + dy,
-                dx=p.client_x - p0.client_x,
-                dy=p.client_y - p0.client_y,
-                dispatch=dispatch_copy,
-            )
-            dispatch_copy(typename, self, drag_event, d)
-
 
     def _mouse_downed(self, event, d, node):
         if self._touch_ended or self._filter(event, d):
             return
-        gesture = self._before_start(self._container(event, d), event, d, "mouse")
+        gesture = self._before_start(event, d, "mouse")
         if gesture is None:
             return
         (
@@ -134,10 +161,8 @@ class Drag:
         if not self._filter(event, d):
             return
         touches = event.changed_touches
-        c = self._container(event, d)
-
         for touch in touches:
-            if gesture := self._before_start(c, event, d, touch["identifier"], touch):
+            if gesture := self._before_start(event, d, touch["identifier"], touch):
                 # nopropagation(event)
                 gesture("start", event, touch)
 
