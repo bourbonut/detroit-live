@@ -32,7 +32,7 @@ groups = heatmap["group"].unique().sort().to_list()
 variables = heatmap["variable"].unique().to_list()
 variables = sorted(variables, key=lambda v: int(v[1:]))
 
-html = d3live.live_create("html")
+html = d3live.create("html")
 html.append("style").text(style)
 body = html.append("body").append("div")
 
