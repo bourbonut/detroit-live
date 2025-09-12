@@ -6,6 +6,7 @@ from .events import (
     EventHandler,
     parse_event,
 )
+from .pointer import pointer
 from .live import Live
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "EventHandler",
     "Live",
     "parse_event",
+    "pointer",
 ]

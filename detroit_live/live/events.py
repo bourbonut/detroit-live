@@ -47,7 +47,7 @@ def json_format(cls: type[Self], prefix: str, mapping: dict[str, str]) -> str:
 
 
 def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
-    return cls(*(content[snake_to_camel(attr)] for attr in cls.__annotations__))
+    return cls(*(content.get(snake_to_camel(attr)) for attr in cls.__annotations__))
 
 
 class JsonFormat(ABC):
@@ -93,16 +93,26 @@ class WheelEvent(Event):
 
 @dataclass
 class MouseEvent(Event):
+    x: int
+    y: int
     client_x: int
     client_y: int
+    page_x: int
+    page_y: int
     ctrl_key: bool
     shift_key: bool
     alt_key: bool
     element_id: int
+    rect_top: int
+    rect_left: int
 
     @classmethod
     def json_format(cls: type[Self]) -> str:
-        return json_format(cls, "event", {"element_id": "srcElement.id"})
+        return json_format(cls, "event", {
+            "element_id": "srcElement.id",
+            "rect_top": "srcElement.getBoundingClientRect().top",
+            "rect_left": "srcElement.getBoundingClientRect().left",
+        })
 
     @classmethod
     def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
@@ -201,7 +211,7 @@ class EventGroup(Generic[T]):
             listeners = [
                 (
                     f"window.addEventListener({typename!r}, (e) =>"
-                    f" {{f({event_json}, {typename!r})}});"
+                    f" {{ console.log(e); f({event_json}, {typename!r})}});"
                 )
                 for typename, element_ids in groups.items()
             ]

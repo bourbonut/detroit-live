@@ -1,5 +1,6 @@
 from .dispatch import dispatch
 from .selection import create, select
+from .live import pointer
 from .timer import (
     interval,
     now,
@@ -12,6 +13,7 @@ __all__ = [
     "dispatch",
     "interval",
     "now",
+    "pointer",
     "select",
     "timeout",
     "timer",
