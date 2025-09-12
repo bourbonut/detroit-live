@@ -4,7 +4,7 @@ from lxml import etree
 from .selection import LiveSelection
 
 
-def live_create(name: str) -> LiveSelection:
+def create(name: str) -> LiveSelection:
     """
     Given the specified element name, returns a single-element selection
     containing a detached element of the given name in the current document.
