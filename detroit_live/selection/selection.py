@@ -18,6 +18,7 @@ from ..live import (
     parse_event,
 )
 from .hashtree import HashTree
+from .shared import SharedState
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
 
@@ -79,12 +80,6 @@ class LiveSelection(Selection[T]):
         DOM element in the selection.
     exit : list[etree.Element] = None
         List of existing DOM elements in the selection for which no new datum was found.
-    data : dict[etree.Element, T] | None = None
-        Association between nodes and its data
-    tree : HashTree | None
-        Object which helps to get a unique ID for each node
-    events : dict[str, list[EventHandler]] | None
-        Groups of event handlers
 
     Examples
     --------
@@ -113,19 +108,19 @@ class LiveSelection(Selection[T]):
     '<body><svg xmlns="http://www.w3.org/2000/svg" weight="960" height="500"><g transform="translate(20, 20)"><rect width="920" height="460"/></g></svg></body>'
     """
 
+    _shared = SharedState()
+
     def __init__(
         self,
         groups: list[list[etree.Element]],
         parents: list[etree.Element],
         enter: list[EnterNode[T]] | None = None,
         exit: list[etree.Element] = None,
-        data: dict[int, T] | None = None,
-        tree: HashTree | None = None,
-        events: dict[str, list[EventHandler]] | None = None,
     ):
-        super().__init__(groups, parents, enter, exit, data)
-        self._events = {} if events is None else events
-        self._tree = HashTree(self._parents[0]) if tree is None else tree
+        super().__init__(groups, parents, enter, exit, self._shared.data)
+        self._shared.init_tree(self._parents)
+        self._events = self._shared.events
+        self._tree = self._shared.tree
 
     def select(self, selection: str | None = None) -> TLiveSelection:
         """
@@ -210,13 +205,7 @@ class LiveSelection(Selection[T]):
         )
         """
         selection = super().select(selection)
-        return LiveSelection(
-            selection._groups,
-            selection._parents,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(selection._groups, selection._parents)
 
     def select_all(self, selection: str | None = None) -> TLiveSelection:
         """
@@ -302,13 +291,7 @@ class LiveSelection(Selection[T]):
         )
         """
         selection = super().select_all(selection)
-        return LiveSelection(
-            selection._groups,
-            selection._parents,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(selection._groups, selection._parents)
 
     def enter(self) -> TLiveSelection:
         """
@@ -336,13 +319,7 @@ class LiveSelection(Selection[T]):
         )
         """
         selection = super().enter()
-        return LiveSelection(
-            selection._groups,
-            selection._parents,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(selection._groups, selection._parents)
 
     def exit(self) -> TLiveSelection:
         """
@@ -372,13 +349,7 @@ class LiveSelection(Selection[T]):
         )
         """
         selection = super().exit()
-        return LiveSelection(
-            selection._groups,
-            selection._parents,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(selection._groups, selection._parents)
 
     def merge(self, context: TLiveSelection) -> TLiveSelection:
         """
@@ -437,13 +408,7 @@ class LiveSelection(Selection[T]):
         )
         """
         selection = super().merge(context)
-        return LiveSelection(
-            selection._groups,
-            selection._parents,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(selection._groups, selection._parents)
 
     def filter(self, match: Accessor[T, bool] | int | float | str) -> TLiveSelection:
         """
@@ -494,13 +459,7 @@ class LiveSelection(Selection[T]):
         '5'
         """
         selection = super().filter(match)
-        return LiveSelection(
-            selection._groups,
-            selection._parents,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(selection._groups, selection._parents)
 
     def append(self, name: str) -> TLiveSelection:
         """
@@ -578,13 +537,7 @@ class LiveSelection(Selection[T]):
                 self._data[subnode] = self._data.get(node)
         subgroups = list(groups.values())
         parents = list(groups)
-        return LiveSelection(
-            subgroups,
-            parents,
-            data=self._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(subgroups, parents)
 
     def each(self, callback: EtreeFunction[T, None]) -> TLiveSelection:
         """
@@ -613,9 +566,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def attr(
@@ -662,9 +612,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def style(
@@ -710,9 +657,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def text(self, value: Accessor[T, str] | str | None = None) -> TLiveSelection:
@@ -766,9 +710,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def datum(self, value: T) -> TLiveSelection:
@@ -817,9 +758,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def data(
@@ -891,9 +829,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def order(self) -> TLiveSelection:
@@ -912,9 +847,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def join(
@@ -1040,9 +972,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def insert(self, name: str, before: str) -> TLiveSelection:
@@ -1169,13 +1098,7 @@ class LiveSelection(Selection[T]):
                 subgroup = []
             subgroups.append(subgroup)
 
-        return LiveSelection(
-            subgroups,
-            selection._parents,
-            data=self._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(subgroups, selection._parents)
 
     def remove(self) -> TLiveSelection:
         """
@@ -1236,9 +1159,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def call(
@@ -1284,9 +1204,6 @@ class LiveSelection(Selection[T]):
             selection._parents,
             enter=selection._enter,
             exit=selection._exit,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
         )
 
     def clone(self) -> TLiveSelection:
@@ -1300,13 +1217,7 @@ class LiveSelection(Selection[T]):
             Clone of itself
         """
         selection = super().clone()
-        return LiveSelection(
-            selection._groups,
-            selection._parents,
-            data=selection._data,
-            tree=self._tree,
-            events=self._events,
-        )
+        return LiveSelection(selection._groups, selection._parents)
 
     def node(self) -> etree.Element:
         """
