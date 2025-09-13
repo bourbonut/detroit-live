@@ -20,6 +20,8 @@ def get_root(node: etree.Element) -> etree.Element:
     parent = node.getparent()
     return node if parent is None else get_root(parent)
 
+def hash_path(path: str):
+    return sha1(path.encode()).hexdigest()[:16]
 
 class HashTree:
     """

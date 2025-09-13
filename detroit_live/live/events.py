@@ -13,7 +13,7 @@ EVENT_HEADERS = (
     'let s = new WebSocket("ws://localhost:5000/ws");'
     "let w = window;"
     "let d = document;"
-    "function f(o, t){ o.typename = t; s.send(JSON.stringify(o, null, 0)); }"
+    "function f(o, t, p){ o.elementId = p; o.typename = t; s.send(JSON.stringify(o, null, 0)); }"
     "s.addEventListener('message', (e) => { const r = new FileReader();"
     " r.onload = function(o) { const v = JSON.parse(o.target.result);"
     " const el = d.getElementById(v.elementId);"
@@ -109,7 +109,7 @@ class MouseEvent(Event):
     @classmethod
     def json_format(cls: type[Self]) -> str:
         return json_format(cls, "event", {
-            "element_id": "srcElement.id",
+            "element_id": "path",
             "rect_top": "srcElement.getBoundingClientRect().top",
             "rect_left": "srcElement.getBoundingClientRect().left",
         })
@@ -185,6 +185,20 @@ class EventHandler(Generic[T]):
     def __repr__(self) -> str:
         return str(self)
 
+getpath = """
+function getDomPath(el) {
+  if (!el) return '';
+  if (el === document.body) return 'body';
+  let parent = el.parentNode;
+  if (parent === null || parent === undefined) return '';
+  let siblings = Array.from(parent.children).filter(e => e.tagName === el.tagName);
+  let idx = siblings.indexOf(el) + 1;
+  let tag = el.tagName.toLowerCase();
+  let path = getDomPath(parent) + '/' + tag;
+  if (siblings.length > 1) path += `[${idx}]`;
+  return path;
+}
+"""
 
 class EventGroup(Generic[T]):
     def __init__(self, event: type[Event]):
@@ -211,7 +225,7 @@ class EventGroup(Generic[T]):
             listeners = [
                 (
                     f"window.addEventListener({typename!r}, (e) =>"
-                    f" {{ console.log(e); f({event_json}, {typename!r})}});"
+                    f" {{ {getpath} const path = getDomPath(e.srcElement); f({event_json}, {typename!r}, path)}});"
                 )
                 for typename, element_ids in groups.items()
             ]

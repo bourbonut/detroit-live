@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from hashlib import sha256
+from hashlib import sha256, sha1
 from typing import TypeVar
 
 import orjson
@@ -10,6 +10,9 @@ from .diffdict import diffdict
 from .events import EVENT_HEADERS, Event, EventGroup, EventHandler
 
 from .app import CustomQuart
+
+def hash_path(path: str):
+    return sha1(path.encode()).hexdigest()[:16]
 
 LiveSelection = TypeVar("LiveSelection")
 
@@ -136,7 +139,8 @@ class Live:
             element_id = event.element_id
             if self.previous_id == element_id == "":  # Unknown element ID
                 return
-            elif self.previous_id != element_id:  # New element ID
+            element_id = hash_path(element_id)
+            if self.previous_id != element_id:  # New element ID
                 mouseleave = [
                     h
                     for h in group
