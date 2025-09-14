@@ -1,13 +1,23 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+import re
 from copy import deepcopy
 from typing import Any, TypeAlias, TypeVar
-import re
 
 Callback: TypeAlias = Callable[..., None]
 NamedCallback: TypeAlias = tuple[str, Callback]
 TDispatch = TypeVar("Dispatch", bound="Dispatch")
 
 TYPENAME_PATTERN = re.compile(r"^|\s+")
+
+def parse_typenames(typenames: str) -> Iterator[tuple[str, str]]:
+    for typename in TYPENAME_PATTERN.split(typenames.strip())[1:]:
+        name = ""
+        if "." in typename:
+            i = typename.index(".")
+            if i >= 0:
+                name = typename[i + 1:]
+                typename = typename[0:i]
+        yield (typename, name)
 
 def get_type(callbacks: list[NamedCallback], refname: str) -> Callback | None:
     for name, callback in callbacks:
@@ -53,13 +63,7 @@ class Dispatch:
 
     def parse_typenames(self, typenames: str) -> list[tuple[str, str]]:
         values = []
-        for typename in TYPENAME_PATTERN.split(typenames.strip())[1:]:
-            name = ""
-            if "." in typename:
-                i = typename.index(".")
-                if i >= 0:
-                    name = typename[i + 1:]
-                    typename = typename[0:i]
+        for typename, name in parse_typenames(typenames):
             if typename and typename not in self._typenames:
                 raise ValueError(f"Unknown type: {typename!r}")
             values.append((typename, name))

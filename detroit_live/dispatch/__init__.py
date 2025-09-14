@@ -1,3 +1,7 @@
-from .dispatch import Dispatch, dispatch
+from .dispatch import Dispatch, dispatch, parse_typenames
 
-__all__ = ["Dispatch", "dispatch"]
+__all__ = [
+    "Dispatch",
+    "dispatch",
+    "parse_typenames",
+]

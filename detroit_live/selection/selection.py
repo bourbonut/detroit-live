@@ -1,55 +1,19 @@
 import asyncio
-from collections import defaultdict
 from collections.abc import Callable, Iterator
 from typing import Any, Optional, TypeVar
 
 from detroit.selection import Selection
 from detroit.selection.enter import EnterNode
-from detroit.selection.namespace import namespace
 from detroit.types import Accessor, EtreeFunction, Number, T
 from lxml import etree
 
-from ..live import (
-    CustomQuart,
-    Event,
-    EventGroup,
-    EventHandler,
-    Live,
-    parse_event,
-)
-from .hashtree import HashTree
+from ..events import Event
+from ..dispatch import parse_typenames
+from ..live import CustomQuart, Live
 from .shared import SharedState
+from .on import on_add, on_remove
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
-
-
-def creator(
-    node: etree.Element, tree: HashTree, fullname: dict | None = None
-) -> etree.SubElement:
-    """
-    Creates a subnode associated to :code:`node`.
-
-    Parameters
-    ----------
-    node : etree.Element
-        Node on which the subnode will be associated.
-    fullname : dict | None
-        Dictionary with keys :code:`"local"` as name and :code:`"space"` for
-        its namespace.
-
-    Returns
-    -------
-    etree.SubElement
-        Subnode
-    """
-    element = (
-        etree.SubElement(node, fullname["local"], nsmap=fullname["space"])
-        if isinstance(fullname, dict)
-        else etree.SubElement(node, fullname, nsmap={})
-    )
-    element.set("id", tree.insert(element))
-    return element
-
 
 class LiveSelection(Selection[T]):
     """
@@ -118,7 +82,7 @@ class LiveSelection(Selection[T]):
         exit: list[etree.Element] = None,
     ):
         super().__init__(groups, parents, enter, exit, self._shared.data)
-        self._shared.init_tree(self._parents)
+        self._shared.set_tree_root(self._parents)
         self._events = self._shared.events
         self._tree = self._shared.tree
 
@@ -519,25 +483,13 @@ class LiveSelection(Selection[T]):
           </g>
         </svg>
         """
-        fullname = namespace(name)
-        groups = defaultdict(list)
-        nodes = (node for group in self._groups for node in group)
-        for node in filter(lambda n: n is not None, nodes):
-            if isinstance(node, EnterNode):
-                enter_node = node
-                node = enter_node._parent
-                subnode = creator(node, self._tree, fullname)
-                node.append(subnode)
-                self._data[subnode] = enter_node.__data__
-                groups[node].append(subnode)
-            else:
-                subnode = creator(node, self._tree, fullname)
-                node.append(subnode)
-                groups[node].append(subnode)
-                self._data[subnode] = self._data.get(node)
-        subgroups = list(groups.values())
-        parents = list(groups)
-        return LiveSelection(subgroups, parents)
+        selection = super().append(name)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+        )
 
     def each(self, callback: EtreeFunction[T, None]) -> TLiveSelection:
         """
@@ -1082,23 +1034,13 @@ class LiveSelection(Selection[T]):
           </g>
         </svg>
         """
-        fullname = namespace(name)
-        selection = self.select_all(before)
-        subgroups = []
-        for i, group in enumerate(selection._groups):
-            if len(group) > 0:
-                node = group[0]
-                parent = selection._parents[i]
-                index = parent.index(node)
-                created = creator(parent, self._tree, fullname)
-                parent.insert(index, created)
-                self._data[created] = self._data.get(node)
-                subgroup = [created]
-            else:
-                subgroup = []
-            subgroups.append(subgroup)
-
-        return LiveSelection(subgroups, selection._parents)
+        selection = super().insert(name, before)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+        )
 
     def remove(self) -> TLiveSelection:
         """
@@ -1308,9 +1250,9 @@ class LiveSelection(Selection[T]):
     def on(
         self,
         typename: str,
-        listener: Callable[[Event, T | None, Optional[etree.Element]], None],
-        target: str | None = None,
+        listener: Callable[[Event, T | None, Optional[etree.Element]], None] | None = None,
         extra_nodes: list[etree.Element] | None = None,
+        target: str | None = None,
     ) -> TLiveSelection:
         """
         Adds a listener to each selected element for the specified event
@@ -1322,32 +1264,30 @@ class LiveSelection(Selection[T]):
             Event typename
         listener : Callable[[Event, T | None, Optional[etree.Element]], None]
             Listener function
-        target : str | None
-            Target on which the event listener is added
         extra_nodes : list[etree.Element] | None
             Extra nodes to update when the listener is called
+        target : str | None
+            Target on which the event listener is added
 
         Returns
         -------
         LiveSelection
             Itself
         """
-        extra_nodes = (
-            None
-            if extra_nodes is None
-            else [self._tree.hash(node) for node in extra_nodes]
+        extra_nodes = [] if extra_nodes is None else extra_nodes
+        typenames = list(parse_typenames(typename))
+
+        on = (
+            on_remove(self._events)
+            if listener is None else
+            on_add(self._events, listener, self._data.get, extra_nodes, target)
         )
         nodes = [node for group in self._groups for node in group]
         for node in filter(lambda n: n is not None, nodes):
             if isinstance(node, EnterNode):
                 node = node._parent
-            event_handler = EventHandler(
-                typename, listener, target, self._tree.hash(node), extra_nodes
-            )
-            event = parse_event(typename)
-            self._events.setdefault(event.__name__, EventGroup(event)).append(
-                event_handler
-            )
+            for typename, name in typenames:
+                on(typename, name, node)
         return self
 
     def to_app(self, name: str | None = None) -> CustomQuart:

@@ -1,7 +1,21 @@
 from hashlib import sha1
-
 from lxml import etree
 
+def hash_path(path: str) -> str:
+    """
+    Returns a hashed 16-character hexadecimal string given the specific path.
+
+    Parameters
+    ----------
+    path : str
+        Element path
+
+    Returns
+    -------
+    str
+        16-character hexadecimal string
+    """
+    return sha1(path.encode()).hexdigest()[:16]
 
 def get_root(node: etree.Element) -> etree.Element:
     """
@@ -26,23 +40,31 @@ class HashTree:
     Hash Tree object which helps to get a unique ID for each node. Unfortunatly
     it is not sufficient to use :code:`hash(node)`.
 
-    Parameters
-    ----------
-    node : etree.Element
-        Any starting node element
-
     Notes
     -----
     The root tree element will be found based on the node given in arguments.
     """
 
-    def __init__(self, node: etree.Element):
+    def __init__(self):
+        self._root = None
+        self._tree = None
+        self._map = {}
+
+    def set_root(self, node: etree.Element):
+        """
+        Sets the root node and the element tree given the node.
+
+        Parameters
+        ----------
+        node : etree.Element
+            Node element
+        """
         self._root = get_root(node)
         self._tree = etree.ElementTree(self._root)
-        self._map = {self.hash(node): node}
+        self._map[self.hash(node)] = node
 
     @property
-    def root(self) -> etree.Element:
+    def root(self) -> etree.Element | None:
         """
         Returns the root node of the tree
 
@@ -55,7 +77,8 @@ class HashTree:
 
     def hash(self, node: etree.Element) -> str:
         """
-        Hashes a node element
+        Hashes a node element into a 16-character hexadecimal string given the
+        specific path.
 
         Parameters
         ----------
@@ -65,11 +88,10 @@ class HashTree:
         Returns
         -------
         str
-           Hash value
+           Hashed 16-character hexadecimal string
         """
         path = self._tree.getelementpath(node)
-        path = f"{path}[1]" if path[-1] != "]" else path
-        return sha1(path.encode()).hexdigest()[:16]
+        return hash_path(f"{path}[1]" if path[-1] != "]" else path)
 
     def insert(self, node: etree.Element) -> str:
         """
@@ -89,14 +111,14 @@ class HashTree:
         self._map[hash_key] = node
         return str(hash_key)
 
-    def get(self, hash_key: int) -> etree.Element:
+    def get(self, hash_key: str) -> etree.Element:
         """
         Gets the node element given a hash key value
 
         Parameters
         ----------
-        hash_key : int
-            Hash key value
+        hash_key : str
+            Hashed 16-character hexadecimal string
 
         Returns
         -------
