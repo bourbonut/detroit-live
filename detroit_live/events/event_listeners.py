@@ -90,7 +90,6 @@ class EventListener:
     typename: str
     name: str
     listener: ContextListener
-    updated_nodes: list[etree.Element]
     target: str | None = None
 
     def __post_init__(self):
@@ -157,10 +156,10 @@ class EventListenersGroup:
             elif self._previous_node != next_node:
                 event_listeners = [
                     event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                    if (
-                        (node == self._previous_node and typename == "mouseleave") or
-                        (node == next_node and typename == event_typename)
-                    )
+                    if (node == self._previous_node and typename == "mouseleave")
+                ] + [
+                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
+                    if (node == next_node and typename == event_typename)
                 ]
                 self._previous_node = next_node
                 return event_listeners

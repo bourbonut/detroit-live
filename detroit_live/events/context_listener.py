@@ -92,7 +92,7 @@ class ContextListener(Generic[T]):
             ) for node in self._updated_nodes
         ]
 
-        node = self._updated_nodes[0]
+        node = self.get_node()
         self._listener(event, self._data_accessor(node), node)
 
         for node, old_attrib, sha256_value in states:
@@ -113,3 +113,9 @@ class ContextListener(Generic[T]):
 
     def get_node(self) -> etree.Element:
         return self._updated_nodes[0]
+
+    def __str__(self):
+        return f"ContextListener(listener={self._listener}, node={self.get_node()}, data={self._data_accessor(self.get_node())}, updated_nodes={self._updated_nodes})"
+
+    def __repr__(self):
+        return str(self)
