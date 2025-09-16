@@ -1,5 +1,5 @@
 from lxml import etree
-from .get_root import get_root
+from .utils import get_root
 
 class CacheTree:
 

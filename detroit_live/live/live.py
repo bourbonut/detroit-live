@@ -4,8 +4,8 @@ import orjson
 from lxml import etree
 from quart import websocket
 
+from ..events import TrackingTree
 from .app import CustomQuart
-from ..tracking_tree import TrackingTree
 
 LiveSelection = TypeVar("LiveSelection")
 

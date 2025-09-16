@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, TypeVar
 
 from lxml import etree
-from ..tracking_tree import TrackingTree
+from .tracking_tree import TrackingTree
 from .base import Event
 from .context_listener import ContextListener
 from .types import parse_event

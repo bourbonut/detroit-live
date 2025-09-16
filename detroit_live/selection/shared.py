@@ -1,5 +1,4 @@
-from ..events import EventListeners
-from ..tracking_tree import TrackingTree
+from ..events import EventListeners, TrackingTree
 from typing import Generic, TypeVar
 from lxml import etree
 

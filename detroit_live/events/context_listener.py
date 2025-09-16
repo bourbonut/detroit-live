@@ -3,7 +3,7 @@ from hashlib import sha256
 from lxml import etree
 from typing import Generic, Optional, TypeVar
 
-from ..tracking_tree import TrackingTree
+from .tracking_tree import TrackingTree
 from .base import Event
 from .utils import (
     to_bytes,
