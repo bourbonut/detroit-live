@@ -6,14 +6,48 @@ from detroit.selection import Selection
 from detroit.selection.enter import EnterNode
 from detroit.types import Accessor, EtreeFunction, Number, T
 from lxml import etree
+from quart import websocket
+import orjson
 
-from ..events import Event
+from ..events import Event, TrackingTree
 from ..dispatch import parse_typenames
-from ..live import CustomQuart, Live
 from .shared import SharedState
 from .on import on_add, on_remove
+from .app import App
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
+
+def default_html(selection: TLiveSelection) -> str:
+    """
+    Generates HTML content containing scripts for events
+
+    Parameters
+    ----------
+    selection : LiveSelection
+        Selection
+
+    Returns
+    -------
+    str
+        HTML content
+    """
+    ttree = TrackingTree()
+    if ttree.root is None:
+        return "<html></html>"
+    node = ttree.root
+    tag = node.tag
+    script = selection._events.into_script()
+    if tag != "html":
+        return (
+            f"<html><body>{selection}<script>{script}</script></body></html>"
+        )
+    body = selection.select("body")
+    if body._groups:
+        body.append("script").text(script)
+        return str(selection).replace("&lt;", "<").replace("&gt;", ">")
+    else:
+        selection.append("script").text(script)
+        return str(selection).replace("&lt;", "<").replace("&gt;", ">")
 
 class LiveSelection(Selection[T]):
     """
@@ -1290,9 +1324,14 @@ class LiveSelection(Selection[T]):
                 on(typename, name, node)
         return self
 
-    def to_app(self, name: str | None = None) -> CustomQuart:
+    def create_app(
+        self,
+        name: str | None = None,
+        html: Callable[[TLiveSelection], str] | None = None
+    ) -> App:
         """
         Creates an application for allowing interactivity.
+        Use :code:`App.run` to start the application.
 
         This is best used for development only, see Hypercorn for production
         servers.
@@ -1301,68 +1340,29 @@ class LiveSelection(Selection[T]):
         ----------
         name : str | None
             Name of the application
+        html : Callable[[LiveSelection], str] | None
+            Function to transform the selection into a HTML content
 
         Returns
         -------
-        CustomQuart
-            Application
+        App
+            Application for allowing interactivity.
         """
-        return Live(self).create_app(name)
+        app = App("detroit-live" if name is None else name)
+        html = default_html(self) if html is None else html(self)
 
-    def live(
-        self,
-        name: str | None = None,
-        host: str | None = None,
-        port: int | None = None,
-        debug: bool | None = None,
-        use_reloader: bool = True,
-        loop: asyncio.AbstractEventLoop | None = None,
-        ca_certs: str | None = None,
-        certfile: str | None = None,
-        keyfile: str | None = None,
-        **kwargs: Any,
-    ):
-        """
-        Runs the selection into an asynchronous application with interactivity
-        through events.
+        @app.websocket("/ws")
+        async def ws():
+            while True:
+                event = orjson.loads(await websocket.receive())
+                for json in self._events(event):
+                    await websocket.send(orjson.dumps(json))
 
-        This is best used for development only, see Hypercorn for
-        production servers.
-
-        Parameters
-        ----------
-        name : str | None
-            Name of the application. Default :code:`__name__`
-        host : str | None
-            Hostname to listen on. By default this is loopback only, use
-            0.0.0.0 to have the server listen externally.
-        port : int | None
-            Port number to listen on.
-        debug : bool | None
-            If set enable (or disable) debug mode and debug output.
-        use_reloader : bool
-            Automatically reload on code changes.
-        loop : asyncio.AbstractEventLoop | None
-            Asyncio loop to create the server in, if None, take default one. If
-            specified it is the caller's responsibility to close and cleanup
-            the loop.
-        ca_certs : str | None
-            Path to the SSL CA certificate file.
-        certfile : str | None
-            Path to the SSL certificate file.
-        keyfile : str | None
-            Path to the SSL key file.
-        """
-        self.to_app(name).run(
-            host,
-            port,
-            debug,
-            use_reloader,
-            loop,
-            ca_certs,
-            certfile,
-            keyfile,
-        )
+        @app.route("/")
+        async def index():
+            return html
+        
+        return app
 
     def to_string(self, pretty_print: bool = True) -> str:
         """

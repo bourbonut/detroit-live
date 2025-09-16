@@ -10,7 +10,7 @@ from quart.helpers import get_debug_flag
 from quart.utils import MustReloadError, observe_changes, restart
 
 
-class CustomQuart(Quart):
+class App(Quart):
     def run(
         self,
         host: str | None = None,

@@ -124,4 +124,4 @@ def key_data(d):
     .on("mousemove", mousemove, extra_nodes=[tooltip.node()])
     .on("mouseleave", mouseleave, extra_nodes=[tooltip.node()])
 )
-html.live()
+html.create_app().run()
