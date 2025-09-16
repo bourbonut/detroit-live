@@ -98,10 +98,11 @@ class Gesture:
 
 class Drag:
 
-    def __init__(self):
+    def __init__(self, extra_nodes: list[etree.Element] | None = None):
+        self._extra_nodes = extra_nodes
         self._filter = argpass(default_filter)
         self._subject = argpass(default_subject)
-        self._touchable = self._default_touchable
+        self._touchable = default_touchable
         self._gestures = {}
         self._listeners = dispatch("start", "drag", "end")
         self._active = 0
@@ -113,11 +114,11 @@ class Drag:
 
     def __call__(self, selection: LiveSelection):
         (
-            selection.on("mousedown.drag", self._mouse_downed)
-            .filter(self._default_touchable(selection))
-            .on("touchstart.drag", self._touch_started)
-            .on("touchmove.drag", self._touch_moved)
-            .on("touchend.drag touchcancel.drag", self._touch_ended)
+            selection.on("mousedown.drag", self._mouse_downed, self._extra_nodes)
+            .filter(self._touchable(selection))
+            .on("touchstart.drag", self._touch_started, self._extra_nodes)
+            .on("touchmove.drag", self._touch_moved, self._extra_nodes)
+            .on("touchend.drag touchcancel.drag", self._touch_ended, self._extra_nodes)
             .style("touch-action", "none")
             .style("-webkit-tap-highlight-color", "rgba(0,0,0,0)")
         )
@@ -198,7 +199,7 @@ class Drag:
                 # noevent(event) # Special event listener ?
                 gesture("drag", event, touch)
 
-    def _touch_end(self, event: MouseEvent, d: T | None, node: etree.Element):
+    def _touch_ended(self, event: MouseEvent, d: T | None, node: etree.Element):
         touches = event.changed_touches
         if self._touch_ending:
             # clear_timeout(self._touch_ending) # Hmm timeout to clear but how ?

@@ -2,7 +2,7 @@ from lxml import etree
 from collections.abc import Callable
 from typing import Any, TypeVar
 from ..dispatch import Dispatch
-from ..live import Event
+from ..events import Event
 
 TDragEvent = TypeVar("DragEvent", bound="DragEvent")
 
