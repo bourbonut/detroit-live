@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Any, Optional, TypeVar
 
 from lxml import etree
@@ -146,7 +147,13 @@ class EventListenersGroup:
     def pop(self, key: tuple[etree.Element, str, str], default: Any = None) -> EventListener | None:
         return self._event_listeners.pop(key, default)
 
-    def filter(self, event: Event, event_typename: str) -> list[EventListener]:
+    def filter(self, filter_func: Callable[[etree.Element, str, str], bool]) -> list[EventListener]:
+        return [
+            event_listener for (node, typename, name), event_listener in self._event_listeners.items()
+            if filter_func(node, typename, name)
+        ]
+
+    def filter_by(self, event: Event, event_typename: str) -> list[EventListener]:
         ttree = TrackingTree()
         if hasattr(event, "element_id"): # MouseEvent and events with attribute 'element_id'
             element_id = event.element_id
@@ -177,7 +184,7 @@ class EventListenersGroup:
     def propagate(self, event: dict[str, Any]):
         typename = event["typename"]
         event = self.event.from_json(event)
-        for event_listener in self.filter(event, typename):
+        for event_listener in self.filter_by(event, typename):
             for json in event_listener.listener(event):
                 yield json
 
@@ -249,3 +256,9 @@ class EventListeners:
         return EVENT_HEADERS + "".join(
             group.into_script() for group in self._event_listeners.values()
         )
+
+    def keys(self) -> set[str]:
+        return set(self._event_listeners.keys())
+
+    def values(self) -> list[EventListenersGroup]:
+        return list(self._event_listeners.values())

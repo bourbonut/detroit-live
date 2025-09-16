@@ -1,3 +1,4 @@
+from lxml import etree
 from collections.abc import Callable
 from typing import Any, TypeVar
 from ..dispatch import Dispatch
@@ -10,9 +11,9 @@ class DragEvent:
         self,
         event_type: str,
         source_event: Event,
-        subject: Any,
-        target: Any,
-        identifier: Any,
+        subject: etree.Element | None,
+        target: etree.Element,
+        identifier: str,
         active: int,
         x: float,
         y: float,
@@ -31,6 +32,9 @@ class DragEvent:
         self.dx = dx
         self.dy = dy
         self.dispatch = dispatch
+
+    def __getitem__(self, attribute: str) -> Any:
+        return getattr(self, attribute)
 
     def on(self, typename: str, callback: Callable[..., None]) -> TDragEvent:
         self.dispatch.on(typename, callback)
