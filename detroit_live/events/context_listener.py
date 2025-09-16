@@ -1,75 +1,19 @@
 from collections.abc import Callable
 from hashlib import sha256
 from lxml import etree
-from io import StringIO
-from typing import Any, Generic, Optional, TypeVar
+from typing import Generic, Optional, TypeVar
 
 from ..tracking_tree import TrackingTree
 from .base import Event
-from .diffdict import diffdict
+from .utils import (
+    to_bytes,
+    to_string,
+    diffdict,
+    get_node_attribs,
+    xpath_to_query_selector,
+)
 
 T = TypeVar("T")
-
-def to_bytes(node: etree.Element) -> bytes:
-    """
-    Converts a node element into bytes.
-
-    Parameters
-    ----------
-    node : etree.Element
-        Node element
-
-    Returns
-    -------
-    bytes
-        Bytes content of the node
-    """
-    return etree.tostring(node).removesuffix(b"\n")
-
-def to_string(node: etree.Element) -> str:
-    """
-    Converts a node element into text.
-
-    Parameters
-    ----------
-    node : etree.Element
-        Node element
-
-    Returns
-    -------
-    str
-        Text content of the node.
-    """
-    return etree.tostring(node, method="html").decode("utf-8").removesuffix("\n")
-
-def get_node_attribs(node: etree.Element) -> dict[str, Any]:
-    """
-    Gets the attributes of a node
-
-    Parameters
-    ----------
-    node : etree.Element
-        Node
-
-    Returns
-    -------
-    dict[str, Any]
-        Attributes of the node
-    """
-    attribs = dict(node.attrib)
-    attribs["innerHTML"] = node.text
-    return attribs
-
-
-def xpath_to_query_selector(path: str) -> str:
-    string = StringIO()
-    for el in path.split("/"):
-        if "[" in el:
-            el, times = el.replace("]", "").split("[")
-            string.write(f" {el}:nth-of-type({times})")
-        else:
-            string.write(f" {el}")
-    return string.getvalue()
 
 class ContextListener(Generic[T]):
     def __init__(
@@ -115,7 +59,12 @@ class ContextListener(Generic[T]):
         return self._updated_nodes[0]
 
     def __str__(self):
-        return f"ContextListener(listener={self._listener}, node={self.get_node()}, data={self._data_accessor(self.get_node())}, updated_nodes={self._updated_nodes})"
+        return (
+            f"ContextListener(listener={self._listener},"
+            f" node={self.get_node()},"
+            f" data={self._data_accessor(self.get_node())},"
+            f" updated_nodes={self._updated_nodes})"
+        )
 
     def __repr__(self):
         return str(self)

@@ -1,6 +1,6 @@
 from .dispatch import dispatch
 from .selection import create, select
-from .live import pointer
+from .events import pointer
 from .timer import (
     interval,
     now,
