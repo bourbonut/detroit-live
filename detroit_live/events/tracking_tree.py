@@ -102,14 +102,20 @@ class TrackingTree:
         etree.Element | None
             Node element
         """
+        root_tag = self.__root.tag
+        if root_tag in path:
+            path = path.split(root_tag)[1]
         if path == "":
             return None
         if path in self.__cache_node:
             return self.__cache_node[path]
-        if path == "/html":
+        if path == f"/{root_tag}":
             node = self.__tree.xpath(path)[0]
         else:
-            node = self.__tree.xpath(f"/html/{path}")[0]
+            try:
+                node = self.__tree.xpath(f"/{root_tag}/{path}")[0]
+            except IndexError:
+                raise RuntimeError(f"/{root_tag}/{path} not found in XML tree (root={root_tag}).")
         self.__cache_node[path] = node
         self.__cache_path[node] = path
         return node
