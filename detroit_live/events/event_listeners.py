@@ -155,6 +155,12 @@ class EventListenersGroup:
             if filter_func(node, typename, name)
         ]
 
+    def select(self, node: etree.Element, typename: str) -> list[EventListener]:
+        return [
+            event_listener for (el_node, el_typename, _), event_listener in self._event_listeners.items()
+            if (el_node == node and el_typename == typename)
+        ]
+
     def filter_by(self, event: Event, event_typename: str) -> list[EventListener]:
         ttree = TrackingTree()
         if hasattr(event, "element_id"): # MouseEvent and events with attribute 'element_id'
@@ -162,39 +168,26 @@ class EventListenersGroup:
             next_node = ttree.get_node(element_id)
             if next_node is None and self._mousedowned_node is None:
                 return []
-            elif event_typename == "mouseover":
-                event_listeners = [
-                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                    if (node == self._previous_node and typename == "mouseleave")
-                ] + [
-                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                    if (node == next_node and typename == event_typename)
-                ]
-                self._previous_node = next_node
-                return event_listeners
-            elif event_typename == "mousedown":
-                self._mousedowned_node = next_node
-                return [
-                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                    if node == next_node and typename == event_typename
-                ]
-            elif event_typename == "mouseup":
-                self._mousedowned_node = None
-                return [
-                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                    if node == next_node and typename == event_typename
-                ]
-            elif self._mousedowned_node is not None:
-                target = self._mousedowned_node
-                return [
-                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                    if node == target and typename == event_typename
-                ]
-            else:
-                return [
-                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                    if node == next_node and typename == event_typename
-                ]
+
+            # Update states for mouse events
+            # `previous_node` is the node that the mouse has left
+            # `mousedowned_node` is the node that the mouse is currently "holding"
+            match event_typename:
+                case "mouseover":
+                    event_listeners = (
+                        self.select(self._previous_node, "mouseleave") +
+                        self.select(next_node, event_typename)
+                    )
+                    self._previous_node = next_node
+                    return event_listeners
+                case "mousedown" | "mouseup":
+                    self._mousedowned_node = next_node if event_typename == "mousedown" else None
+
+            target = next_node if self._mousedowned_node is None else self._mousedowned_node
+            return [
+                event_listener for (node, typename, _), event_listener in self._event_listeners.items()
+                if node == target and typename == event_typename
+            ]
         else: # Other event types
             return [
                 event_listener for (_, typename, _), event_listener in self._event_listeners.items()
