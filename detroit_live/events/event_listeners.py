@@ -135,6 +135,7 @@ class EventListenersGroup:
         self.event_type: str = self.event.__name__
         self._event_listeners: dict[tuple[etree.Element, str, str], EventListener] = {}
         self._previous_node = None
+        self._mousedowned_node = None
 
     def __contains__(self, key: tuple[etree.Element, str, str]) -> bool:
         return key in self._event_listeners
@@ -159,9 +160,9 @@ class EventListenersGroup:
         if hasattr(event, "element_id"): # MouseEvent and events with attribute 'element_id'
             element_id = event.element_id
             next_node = ttree.get_node(element_id)
-            if self._previous_node is None and next_node is None:
+            if next_node is None and self._mousedowned_node is None:
                 return []
-            elif self._previous_node != next_node:
+            elif event_typename == "mouseover":
                 event_listeners = [
                     event_listener for (node, typename, _), event_listener in self._event_listeners.items()
                     if (node == self._previous_node and typename == "mouseleave")
@@ -171,6 +172,24 @@ class EventListenersGroup:
                 ]
                 self._previous_node = next_node
                 return event_listeners
+            elif event_typename == "mousedown":
+                self._mousedowned_node = next_node
+                return [
+                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
+                    if node == next_node and typename == event_typename
+                ]
+            elif event_typename == "mouseup":
+                self._mousedowned_node = None
+                return [
+                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
+                    if node == next_node and typename == event_typename
+                ]
+            elif self._mousedowned_node is not None:
+                target = self._mousedowned_node
+                return [
+                    event_listener for (node, typename, _), event_listener in self._event_listeners.items()
+                    if node == target and typename == event_typename
+                ]
             else:
                 return [
                     event_listener for (node, typename, _), event_listener in self._event_listeners.items()
