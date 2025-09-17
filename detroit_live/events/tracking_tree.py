@@ -1,5 +1,6 @@
 from lxml import etree
 from .utils import get_root
+import warnings
 
 class CacheTree:
 
@@ -104,7 +105,7 @@ class TrackingTree:
         """
         root_tag = self.__root.tag
         if root_tag in path:
-            path = path.split(root_tag)[1]
+            path = path.split(root_tag)[1] # or root_tag
         if path == "":
             return None
         if path in self.__cache_node:
@@ -115,7 +116,11 @@ class TrackingTree:
             try:
                 node = self.__tree.xpath(f"/{root_tag}/{path}")[0]
             except IndexError:
-                raise RuntimeError(f"/{root_tag}/{path} not found in XML tree (root={root_tag}).")
+                warnings.warn(
+                    f"{path!r} not found in XML tree (root={root_tag}).",
+                    category=RuntimeWarning,
+                )
+                node = None
         self.__cache_node[path] = node
         self.__cache_path[node] = path
         return node

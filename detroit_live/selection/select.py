@@ -3,9 +3,7 @@ from lxml import etree
 from .selection import LiveSelection
 
 
-def select(
-    node: etree.Element,
-) -> LiveSelection:
+def select(node: etree.Element) -> LiveSelection:
     """
     Returns a selection object given a node
 

@@ -4,6 +4,7 @@ from detroit.array import argpass
 from detroit.types import Accessor
 from typing import TypeVar
 from .drag_event import DragEvent
+from .noevent import noevent
 from .nodrag import nodrag, yesdrag
 from ..dispatch import dispatch
 from ..events import MouseEvent, Event, pointer
@@ -59,23 +60,16 @@ class Gesture:
         self._dx = subject["x"] - p[0]
         self._dy = subject["y"] - p[1]
 
-    def gesture(self, typename: str, event: MouseEvent, touch: Event | None = None):
+    def __call__(self, typename: str, event: MouseEvent, touch: Event | None = None):
         p0 = self._p
-        n = 0
-        match typename:
-            case "start":
-                self._gestures[self._identifier] = self.gesture
-                n = self._active
-                self._active += 1
-            case "end":
-                self._gestures.pop(self._identifier)
-                self._active -= 1
-                self._p = pointer(event or event)
-                n = self._active
-            case "drag":
-                self._p = pointer(touch or event)
-                n = self._active
-
+        p, n = self._drag._update_from_gesture(
+            typename,
+            event,
+            self.__call__,
+            self._identifier,
+            touch,
+        )
+        self._p = p or self._p
         self._dispatch(
             typename,
             DragEvent(
@@ -115,6 +109,9 @@ class Drag:
     def __call__(self, selection: LiveSelection):
         (
             selection.on("mousedown.drag", self._mouse_downed, self._extra_nodes)
+            .on("mousemove.drag", self._mouse_moved, self._extra_nodes, active=False)
+            .on("dragstart.drag", noevent, self._extra_nodes, active=False)
+            .on("mouseup.drag", self._mouse_upped, self._extra_nodes, active=False)
             .filter(self._touchable(selection))
             .on("touchstart.drag", self._touch_started, self._extra_nodes)
             .on("touchmove.drag", self._touch_moved, self._extra_nodes)
@@ -122,6 +119,31 @@ class Drag:
             .style("touch-action", "none")
             .style("-webkit-tap-highlight-color", "rgba(0,0,0,0)")
         )
+
+    def _update_from_gesture(
+        self,
+        typename: str,
+        event: MouseEvent,
+        gesture: Callable[[str, MouseEvent, Event | None], None],
+        identifier: str,
+        touch: Event | None = None
+    ):
+        p = None
+        n = 0
+        match typename:
+            case "start":
+                self._gestures[identifier] = gesture
+                n = self._active
+                self._active += 1
+            case "end":
+                self._gestures.pop(identifier)
+                self._active -= 1
+                p = pointer(touch or event)
+                n = self._active
+            case "drag":
+                p = pointer(touch or event)
+                n = self._active
+        return p, n
 
     def _before_start(
         self,
@@ -157,21 +179,13 @@ class Drag:
         gesture = self._before_start(event, d, node, "mouse")
         if gesture is None:
             return
-        (
-            select(node) # event.view = Window ?
-            .on("mousemove.drag", self._mouse_moved)
-            .on("mouseup.drag", self._mouse_upped)
-        )
-        nodrag(node) # same question ?
-        # maybe need a specific event listener to deal with this event
-        # nopropagation(event)
+        select(node).set_event("mousemove.drag mouseup.drag dragstart.drag", True)
         self._mouse_moving = False
         self._mouse_down_x = event.client_x
         self._mouse_down_y = event.client_y
         gesture("start", event)
 
     def _mouse_moved(self, event: MouseEvent, d: T | None, node: etree.Element):
-        # noevent(event) # specific listener ?
         if not self._mouse_moving:
             dx = event.client_x - self._mouse_down_x
             dy = event.client_y - self._mouse_down_y
@@ -179,8 +193,7 @@ class Drag:
         self._gestures["mouse"]("drag", event)
 
     def _mouse_upped(self, event: MouseEvent, d: T | None, node: etree.Element):
-        select(node).on("mousemove.drag mouseup.drag", None) # event.view = Window ?
-        yesdrag(node, self._mouse_moving) # event.view ?
+        select(node).set_event("mousemove.drag mouseup.drag dragstart.drag", False)
         self._gestures["mouse"]("end", event)
 
     def _touch_started(self, event: MouseEvent, d: T | None, node: etree.Element):
@@ -189,14 +202,12 @@ class Drag:
         touches = event.changed_touches # touch event ?
         for touch in touches:
             if gesture := self._before_start(event, d, node, touch["identifier"], touch):
-                # nopropagation(event) # Special event listener ?
                 gesture("start", event, touch)
 
     def _touch_moved(self, event: MouseEvent, d: T | None, node: etree.Element):
         touches = event.changed_touches # touch event ?
         for touch in touches:
             if gesture := self._gestures.get(touch["identifier"]):
-                # noevent(event) # Special event listener ?
                 gesture("drag", event, touch)
 
     def _touch_ended(self, event: MouseEvent, d: T | None, node: etree.Element):
@@ -207,7 +218,6 @@ class Drag:
         # self._touch_ending = set_timeout(...)
         for touch in touches:
             if gesture := self._gestures.get(touch["identifier"]):
-                # nopropagation(event) # Special event listener
                 gesture("end", event, touch)
 
     def set_filter(self, filter_func: EventFunction[T | None, bool]) -> TDrag:

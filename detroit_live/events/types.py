@@ -56,6 +56,7 @@ class MouseEvent(Event):
     client_y: int
     page_x: int
     page_y: int
+    button: int
     ctrl_key: bool
     shift_key: bool
     alt_key: bool

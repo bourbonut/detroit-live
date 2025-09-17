@@ -12,6 +12,7 @@ from ..events import Event, TrackingTree
 from ..dispatch import parse_typenames
 from .shared import SharedState
 from .on import on_add, on_remove
+from .active import set_active
 from .app import App
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
@@ -1292,6 +1293,7 @@ class LiveSelection(Selection[T]):
         typename: str,
         listener: Callable[[Event, T | None, Optional[etree.Element]], None] | None = None,
         extra_nodes: list[etree.Element] | None = None,
+        active: bool = True,
         target: str | None = None,
     ) -> TLiveSelection:
         """
@@ -1306,6 +1308,11 @@ class LiveSelection(Selection[T]):
             Listener function
         extra_nodes : list[etree.Element] | None
             Extra nodes to update when the listener is called
+        active: bool
+            :code:`False` if you want to create the event listener but not
+            active when the application is launched. It is useful when you want
+            to activate this event listener only when another event listener
+            was activated.
         target : str | None
             Target on which the event listener is added
 
@@ -1320,7 +1327,7 @@ class LiveSelection(Selection[T]):
         on = (
             on_remove(self._events)
             if listener is None else
-            on_add(self._events, listener, self._data.get, extra_nodes, target)
+            on_add(self._events, listener, self._data.get, extra_nodes, active, target)
         )
         nodes = [node for group in self._groups for node in group]
         for node in filter(lambda n: n is not None, nodes):
@@ -1328,6 +1335,33 @@ class LiveSelection(Selection[T]):
                 node = node._parent
             for typename, name in typenames:
                 on(typename, name, node)
+        return self
+
+    def set_event(self, typename: str, active: bool) -> TLiveSelection:
+        """
+        Updates selected event listeners for being active or not given the
+        specified :code:`active` value.
+
+        Parameters
+        ----------
+        typename : str
+            Event typename
+        active : bool
+            :code:`True` for activating event listeners else :code:`False`
+
+        Returns
+        -------
+        TLiveSelection
+            Itself
+        """
+        set_event = set_active(self._events, active)
+        typenames = list(parse_typenames(typename))
+        nodes = [node for group in self._groups for node in group]
+        for node in filter(lambda n: n is not None, nodes):
+            if isinstance(node, EnterNode):
+                node = node._parent
+            for typename, name in typenames:
+                set_event(typename, name, node)
         return self
 
     def create_app(

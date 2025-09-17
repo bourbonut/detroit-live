@@ -91,6 +91,7 @@ class EventListener:
     typename: str
     name: str
     listener: ContextListener
+    active: bool = True
     target: str | None = None
 
     def __post_init__(self):
@@ -185,6 +186,8 @@ class EventListenersGroup:
         typename = event["typename"]
         event = self.event.from_json(event)
         for event_listener in self.filter_by(event, typename):
+            if not event_listener.active:
+                continue
             for json in event_listener.listener(event):
                 yield json
 

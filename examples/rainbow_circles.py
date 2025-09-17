@@ -12,14 +12,14 @@ height = 500
 
 data = [
     {"x": width * 0.5 + radius * cos(a), "y": height * 0.5 + radius * sin(a)}
-    for radius, a in ((step * sqrt(i + 0.5), theta * (i + 0.5)) for i in range(2000))
+    for radius, a in ((step * sqrt(i + 0.5), theta * (i + 0.5)) for i in range(1))
 ]
 
 svg = (
     d3live.create("svg")
     .attr("width", width)
     .attr("height", height)
-    .attr("viewBox", "".join(map(str, [0, 0, width, height])))
+    .attr("viewBox", ", ".join(map(str, [0, 0, width, height])))
 )
 
 g = svg.append("g").attr("cursor", "grab")
@@ -45,7 +45,7 @@ def drag_ended(event, d, node):
     .attr("r", radius)
     .attr("fill", lambda d, i: d3.interpolate_rainbow(i / 360))
     .call(
-        d3live.drag()
+        d3live.drag(extra_nodes=[g.node()])
         .on("start", drag_started)
         .on("drag", dragged)
         .on("end", drag_ended)
