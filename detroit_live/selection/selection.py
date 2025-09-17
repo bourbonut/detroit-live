@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import Callable, Iterator
 from typing import Any, Optional, TypeVar
 
@@ -17,14 +16,22 @@ from .app import App
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
 
-def default_html(selection: TLiveSelection) -> str:
+def default_html(
+    selection: TLiveSelection,
+    script: str,
+) -> str:
     """
-    Generates HTML content containing scripts for events
+    Returns a function which generates HTML content containing scripts for
+    events.
 
     Parameters
     ----------
     selection : LiveSelection
         Selection
+    script: str
+        Event listeners are parsed and joined as a string which should be
+        placed into a :code:`<script>` tag in order to communicate events via
+        :code:`websocket`.
 
     Returns
     -------
@@ -36,7 +43,6 @@ def default_html(selection: TLiveSelection) -> str:
         return "<html></html>"
     node = ttree.root
     tag = node.tag
-    script = selection._events.into_script()
     if tag != "html":
         return (
             f"<html><body>{selection}<script>{script}</script></body></html>"
@@ -1327,7 +1333,9 @@ class LiveSelection(Selection[T]):
     def create_app(
         self,
         name: str | None = None,
-        html: Callable[[TLiveSelection], str] | None = None
+        html: Callable[[TLiveSelection, ...], str] | None = None,
+        host: str | None = None,
+        port: int | None = None,
     ) -> App:
         """
         Creates an application for allowing interactivity.
@@ -1340,8 +1348,17 @@ class LiveSelection(Selection[T]):
         ----------
         name : str | None
             Name of the application
-        html : Callable[[LiveSelection], str] | None
-            Function to transform the selection into a HTML content
+        html : Callable[[LiveSelection, str], str] | None
+            Function to transform the selection and a script content into a
+            HTML content. Event listeners are parsed and joined as a string
+            variable :code:`script` which should be placed into a
+            :code:`<script>` tag in order to communicate events via
+            :code:`websocket`.
+        host : str | None
+            Hostname to listen on. By default this is loopback only, use
+            0.0.0.0 to have the server listen externally.
+        port : int | None
+            Port number to listen on.
 
         Returns
         -------
@@ -1349,7 +1366,8 @@ class LiveSelection(Selection[T]):
             Application for allowing interactivity.
         """
         app = App("detroit-live" if name is None else name)
-        html = default_html(self) if html is None else html(self)
+        script = self._events.into_script(host, port)
+        html = default_html(self, script) if html is None else html(self)
 
         @app.websocket("/ws")
         async def ws():
@@ -1361,7 +1379,9 @@ class LiveSelection(Selection[T]):
         @app.route("/")
         async def index():
             return html
-        
+
+        app._host = host
+        app._port = port
         return app
 
     def to_string(self, pretty_print: bool = True) -> str:

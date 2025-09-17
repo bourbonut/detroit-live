@@ -7,7 +7,7 @@ from .tracking_tree import TrackingTree
 from .base import Event
 from .context_listener import ContextListener
 from .types import parse_event
-from .headers import EVENT_HEADERS
+from .headers import headers
 
 T = TypeVar("T")
 
@@ -252,8 +252,10 @@ class EventListeners:
         for event_listeners_group in self._event_listeners.values():
             event_listeners_group.pop(key)
 
-    def into_script(self):
-        return EVENT_HEADERS + "".join(
+    def into_script(self, host: str | None = None, port: int | None = None):
+        host = "localhost" if host is None else host
+        port = 5000 if port is None else port
+        return headers(host, port) + "".join(
             group.into_script() for group in self._event_listeners.values()
         )
 

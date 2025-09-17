@@ -11,10 +11,12 @@ from quart.utils import MustReloadError, observe_changes, restart
 
 
 class App(Quart):
+
+    _host = None
+    _port = None
+
     def run(
         self,
-        host: str | None = None,
-        port: int | None = None,
         debug: bool | None = None,
         use_reloader: bool = True,
         loop: asyncio.AbstractEventLoop | None = None,
@@ -31,11 +33,6 @@ class App(Quart):
 
         Parameters
         ----------
-        host : str | None
-            Hostname to listen on. By default this is loopback only, use
-            0.0.0.0 to have the server listen externally.
-        port : int | None
-            Port number to listen on.
         debug : bool | None
             If set enable (or disable) debug mode and debug output.
         use_reloader : bool
@@ -98,11 +95,8 @@ class App(Quart):
         if server_name is not None:
             sn_host, _, sn_port = server_name.partition(":")
 
-        if host is None:
-            host = sn_host or "127.0.0.1"
-
-        if port is None:
-            port = int(sn_port or "5000")
+        host = self._host or sn_host or "127.0.0.1"
+        port = self._port or int(sn_port or "5000")
 
         task = self.run_task(
             host,

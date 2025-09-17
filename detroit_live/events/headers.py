@@ -46,3 +46,6 @@ s.addEventListener('message', (e) => {
 EVENT_HEADERS = "".join(
     s.strip() for s in EVENT_HEADERS.split("\n")
 ).strip()
+
+def headers(host: str, port: int):
+    return EVENT_HEADERS.replace("localhost", host).replace("5000", str(port))
