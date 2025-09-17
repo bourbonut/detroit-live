@@ -5,7 +5,6 @@ from detroit.types import Accessor
 from typing import TypeVar
 from .drag_event import DragEvent
 from .noevent import noevent
-from .nodrag import nodrag, yesdrag
 from ..dispatch import dispatch
 from ..events import MouseEvent, Event, pointer
 from ..selection import LiveSelection, select
