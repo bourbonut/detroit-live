@@ -7,3 +7,4 @@ U = TypeVar("U")
 V = TypeVar("V")
 
 EventFunction: TypeAlias = Callable[[etree.Element, U, list[etree.Element]], V]
+Extent: TypeAlias = tuple[tuple[float, float], tuple[float, float]]

@@ -38,6 +38,8 @@ class WindowSizeEvent(Event):
 class WheelEvent(Event):
     delta_x: int
     delta_y: int
+    delta_mode: int
+    ctrl_key: bool
 
     @classmethod
     def json_format(cls: type[Self]) -> str:
