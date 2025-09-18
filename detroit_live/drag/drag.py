@@ -34,6 +34,7 @@ def default_touchable(selection: LiveSelection) -> Accessor[T, bool]:
             if len(event_listener.filter(filter_func)):
                 return True
         return False
+    return touchable
 
 class Gesture:
 
