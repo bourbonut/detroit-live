@@ -8,6 +8,7 @@ from .timer import (
     timeout,
     timer,
 )
+from .zoom import Zoom as zoom
 
 __all__ = [
     "create",
@@ -19,4 +20,5 @@ __all__ = [
     "select",
     "timeout",
     "timer",
+    "zoom",
 ]

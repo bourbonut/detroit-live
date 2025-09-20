@@ -107,7 +107,7 @@ class TrackingTree:
         if root_tag in path:
             path = path.split(root_tag)[1] # or root_tag
         if path == "":
-            return None
+            return self.__root
         if path in self.__cache_node:
             return self.__cache_node[path]
         if path == f"/{root_tag}":

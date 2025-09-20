@@ -125,7 +125,7 @@ class EventListener:
         typename = repr(self.typename)
         return (
             f"{target}.addEventListener({typename}, "
-            f"(e) => f({event_json}, {typename}, p(e.srcElement));"
+            f"(e) => {{console.log(e); f({event_json}, {typename}, p(e.srcElement))}});"
         )
 
 
@@ -218,8 +218,8 @@ class EventListenersGroup:
             typenames = {typename for (_, typename, _) in self._event_listeners}
             listeners = [
                 (
-                    f"window.addEventListener({typename!r}, (e) =>"
-                    f"f({event_json}, {typename!r}, p(e.srcElement)));"
+                    f"w.addEventListener({typename!r}, (e) => "
+                    f"{{ f({event_json}, {typename!r}, p(e.srcElement))}});"
                 )
                 for typename in typenames
             ]

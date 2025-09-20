@@ -52,4 +52,14 @@ def drag_ended(event, d, node):
     )
 )
 
+def zoomed(event, d, node):
+    g.attr("transform", str(event.transform))
+
+svg.call(
+    d3live.zoom(extra_nodes=[g.node()])
+      .set_extent([[0, 0], [width, height]])
+      .set_scale_extent([1, 8])
+      .on("zoom", zoomed)
+)
+
 svg.create_app().run()

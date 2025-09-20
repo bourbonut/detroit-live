@@ -1181,7 +1181,7 @@ class LiveSelection(Selection[T]):
 
         >>> name(d3.select_all("div"), "John", "Snow")
         """
-        selection = super().call(func)
+        selection = super().call(func, *args)
         return LiveSelection(
             selection._groups,
             selection._parents,

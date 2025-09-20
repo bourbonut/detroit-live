@@ -1,6 +1,6 @@
 from typing import TypeVar
 
-TTransform = TypeVar("Transform", "Transform")
+TTransform = TypeVar("Transform", bound="Transform")
 
 class Transform:
 
@@ -25,7 +25,7 @@ class Transform:
         return y * self.k + self.y
 
     def invert(self, location: tuple[float, float]) -> tuple[float, float]:
-        return [(location[0] - self.x) / self.k, (self.location[1] - self.y) / self.k]
+        return [(location[0] - self.x) / self.k, (location[1] - self.y) / self.k]
 
     def invert_x(self, x: float) -> float:
         return (x - self.x) / self.k

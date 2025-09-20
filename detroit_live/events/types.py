@@ -36,14 +36,22 @@ class WindowSizeEvent(Event):
 
 @dataclass
 class WheelEvent(Event):
+    client_x: int
+    client_y: int
     delta_x: int
     delta_y: int
     delta_mode: int
     ctrl_key: bool
+    button: int
+    rect_top: int
+    rect_left: int
 
     @classmethod
     def json_format(cls: type[Self]) -> str:
-        return json_format(cls, "event", {})
+        return json_format(cls, "event", {
+            "rect_top": "srcElement.getBoundingClientRect().top",
+            "rect_left": "srcElement.getBoundingClientRect().left",
+        })
 
     @classmethod
     def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
