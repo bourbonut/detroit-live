@@ -392,7 +392,7 @@ class Zoom:
         )
 
     def _mouse_downed(self, event: MouseEvent, d: T | None, node: etree.Element):
-        if self._touch_ending or self._filter(event, d, node):
+        if self._touch_ending or not self._filter(event, d, node):
             return
         self._g = g = self._gesture(node, clean=True).event(event)
         self._v = (
