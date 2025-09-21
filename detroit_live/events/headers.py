@@ -28,24 +28,24 @@ function q(u) {
 }
 
 s.addEventListener('message', (e) => {
-    const r = new FileReader();
-    r.onload = function(o) {
-        const v = JSON.parse(o.target.result);
-        const el = q(v.elementId);
-        if (v.diff != undefined) {
-            v.diff.change.forEach(([k, v_]) => el.setAttribute(k, v_));
-            v.diff.remove.forEach(([k, _]) => el.removeAttribute(k));
+    const fr = new FileReader();
+    fr.onload = function(o) {
+        const r = JSON.parse(o.target.result);
+        const el = q(r.elementId);
+        if (r.diff != undefined) {
+            r.diff.change.forEach(([k, v]) => k === "innerHTML" ? el[k] = v: el.setAttribute(k, v));
+            r.diff.remove.forEach(([k, _]) => k === "innerHTML" ? el[k] = undefined : el.removeAttribute(k));
         } else {
-            el.outerHTML = v.outerHTML
+            el.outerHTML = r.outerHTML
         }
     };
-    r.readAsText(e.data);
+    fr.readAsText(e.data);
 });
 """
 
-EVENT_HEADERS = "".join(
-    s.strip() for s in EVENT_HEADERS.split("\n")
-).strip()
+# EVENT_HEADERS = "".join(
+#     s.strip() for s in EVENT_HEADERS.split("\n")
+# ).strip()
 
 def headers(host: str, port: int):
     return EVENT_HEADERS.replace("localhost", host).replace("5000", str(port))

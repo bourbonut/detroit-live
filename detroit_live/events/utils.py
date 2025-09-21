@@ -1,6 +1,9 @@
 from lxml import etree
+from collections.abc import Iterator
+from functools import cache
 from io import StringIO
 from typing import Any
+from ..types import U, V
 
 def get_root(node: etree.Element) -> etree.Element:
     """
@@ -19,22 +22,6 @@ def get_root(node: etree.Element) -> etree.Element:
     parent = node.getparent()
     return node if parent is None else get_root(parent)
 
-def to_bytes(node: etree.Element) -> bytes:
-    """
-    Converts a node element into bytes.
-
-    Parameters
-    ----------
-    node : etree.Element
-        Node element
-
-    Returns
-    -------
-    bytes
-        Bytes content of the node
-    """
-    return etree.tostring(node).removesuffix(b"\n")
-
 def to_string(node: etree.Element) -> str:
     """
     Converts a node element into text.
@@ -51,6 +38,7 @@ def to_string(node: etree.Element) -> str:
     """
     return etree.tostring(node, method="html").decode("utf-8").removesuffix("\n")
 
+@cache
 def xpath_to_query_selector(path: str) -> str:
     """
     Changes a xpath string into a query selector string
@@ -121,3 +109,20 @@ def get_node_attribs(node: etree.Element) -> dict[str, Any]:
     attribs = dict(node.attrib)
     attribs["innerHTML"] = node.text
     return attribs
+
+def search(mapping: dict[U, ...] | V, keys: list[Any], depth: int = 0) -> Iterator[V]:
+    if depth + 1 >= len(keys): # max depth
+        if isinstance(mapping, dict):
+            for value in mapping.values():
+                yield value
+        else:
+            yield mapping
+    else:
+        key = keys[depth]
+        if key is None:
+            for next in mapping.values():
+                for value in search(next, keys, depth + 1):
+                    yield value
+        if next := mapping.get(key):
+            for value in search(next, keys, depth + 1):
+                yield value

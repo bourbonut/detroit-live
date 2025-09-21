@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from collections.abc import Callable
 from typing import Any, Optional, TypeVar
 
 from lxml import etree
@@ -8,6 +7,7 @@ from .base import Event
 from .context_listener import ContextListener
 from .types import parse_event
 from .headers import headers
+from .utils import search
 
 T = TypeVar("T")
 
@@ -87,7 +87,7 @@ class EventListenersGroup:
     def __init__(self, typename: str):
         self.event: type[Event] = parse_event(typename)
         self.event_type: str = self.event.__name__
-        self._event_listeners: dict[tuple[etree.Element, str, str], EventListener] = {}
+        self._event_listeners: dict[etree.Element, dict[str, dict[str, EventListener]]] = {}
         self._previous_node = None
         self._mousedowned_node = None
 
@@ -95,25 +95,28 @@ class EventListenersGroup:
         return key in self._event_listeners
 
     def __setitem__(self, key: tuple[etree.Element, str, str], event_listener: EventListener):
-        self._event_listeners[key] = event_listener
+        node, typename, name = key
+        (self._event_listeners.setdefault(typename, {}).setdefault(node, {})[name]) = event_listener
 
     def get(self, key: tuple[etree.Element, str, str]) -> EventListener | None:
-        return self._event_listeners.get(key)
+        node, typename, name = key
+        if by_nodes := self._event_listeners.get(typename):
+            if by_names := by_nodes.get(node):
+                return by_names.get(name)
 
     def pop(self, key: tuple[etree.Element, str, str], default: Any = None) -> EventListener | None:
-        return self._event_listeners.pop(key, default)
+        node, typename, name = key
+        if by_nodes := self._event_listeners.get(typename):
+            if by_names := by_nodes.get(node):
+                return by_names.pop(name, default)
 
-    def filter(self, filter_func: Callable[[etree.Element, str, str], bool]) -> list[EventListener]:
-        return [
-            event_listener for (node, typename, name), event_listener in self._event_listeners.items()
-            if filter_func(node, typename, name)
-        ]
-
-    def select(self, node: etree.Element, typename: str) -> list[EventListener]:
-        return [
-            event_listener for (el_node, el_typename, _), event_listener in self._event_listeners.items()
-            if (el_node == node and el_typename == typename)
-        ]
+    def search(
+        self,
+        node: Optional[etree.Element] = None,
+        typename: str | None = None,
+        name: str | None = None,
+    ) -> list[EventListener]:
+        return list(search(self._event_listeners, (typename, node, name)))
 
     def filter_by(self, event: Event, event_typename: str) -> list[EventListener]:
         ttree = TrackingTree()
@@ -129,8 +132,8 @@ class EventListenersGroup:
             match event_typename:
                 case "mouseover":
                     event_listeners = (
-                        self.select(self._previous_node, "mouseleave") +
-                        self.select(next_node, event_typename)
+                        self.search(self._previous_node, "mouseleave") +
+                        self.search(next_node, event_typename)
                     )
                     self._previous_node = next_node
                     return event_listeners
@@ -140,22 +143,15 @@ class EventListenersGroup:
             target = next_node if self._mousedowned_node is None else self._mousedowned_node
             if event_typename == "mouseup":
                 self._mousedowned_node = None
-            event_listeners = [
-                event_listener for (node, typename, _), event_listener in self._event_listeners.items()
-                if node == target and typename == event_typename
-            ]
-            return event_listeners
+            return self.search(target, event_typename)
         else: # Other event types
-            event_listeners = [
-                event_listener for (_, typename, _), event_listener in self._event_listeners.items()
-                if typename == event_typename
-            ]
-            return event_listeners
+            return self.search(typename=event_typename)
 
     def propagate(self, event: dict[str, Any]):
         typename = event["typename"]
         event = self.event.from_json(event)
-        for event_listener in self.filter_by(event, typename):
+        result = self.filter_by(event, typename)
+        for event_listener in result:
             if not event_listener.active:
                 continue
             for json in event_listener.listener(event):
@@ -173,7 +169,7 @@ class EventListenersGroup:
     def into_script(self):
         event_json = self.event_json()
         if self.event_type == "MouseEvent":
-            typenames = {typename for (_, typename, _) in self._event_listeners}
+            typenames = list(self._event_listeners)
             listeners = [
                 (
                     f"w.addEventListener({typename!r}, (e) => "
@@ -185,9 +181,8 @@ class EventListenersGroup:
         else:
             return "".join(
                 event_listener.into_script(event_json)
-                for event_listener in self._event_listeners.values()
+                for event_listener in self.search()
             )
-
 
 class EventListeners:
     def __init__(self):

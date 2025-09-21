@@ -7,11 +7,7 @@ def set_active(
     active: bool,
 ) -> Callable[[etree.Element, str, str], None]:
     def set_active_event(typename: str, name: str, node: etree.Element):
-        target = (node, typename, name)
-        def compare(node: etree.Element, typename: str, name: str) -> bool:
-            return (node, typename, name) == target
-
         for listeners in event_listeners.values():
-            for event_listener in listeners.filter(compare):
+            for event_listener in listeners.search(node, typename, name):
                 event_listener.active = active
     return set_active_event

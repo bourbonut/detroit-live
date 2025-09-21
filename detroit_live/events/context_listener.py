@@ -1,12 +1,10 @@
 from collections.abc import Callable
-from hashlib import sha256
 from lxml import etree
 from typing import Generic, Optional, TypeVar
 
 from .tracking_tree import TrackingTree
 from .base import Event
 from .utils import (
-    to_bytes,
     to_string,
     diffdict,
     get_node_attribs,
@@ -32,7 +30,6 @@ class ContextListener(Generic[T]):
             (
                 node,
                 get_node_attribs(node),
-                sha256(to_bytes(node)).digest(),
             ) for node in self._updated_nodes
         ]
 
@@ -40,16 +37,15 @@ class ContextListener(Generic[T]):
         self._listener(event, self._data_accessor(node), node)
 
         nodes = set(self._updated_nodes)
-        for node, old_attrib, sha256_value in states:
-            if sha256_value != sha256(to_bytes(node)).digest():
-                element_id = xpath_to_query_selector(ttree.get_path(node))
-                if len(node) == 0 or len(set(node) | nodes) != 0: # No child
-                    new_attrib = dict(node.attrib)
-                    new_attrib["innerHTML"] = node.text
-                    diff = diffdict(old_attrib, new_attrib)
-                    yield {"elementId": element_id, "diff": diff}
-                else:
-                    yield {"elementId": element_id, "outerHTML": to_string(node)}
+        for node, old_attrib in states:
+            element_id = xpath_to_query_selector(ttree.get_path(node))
+            if len(node) == 0 or len(set(node) | nodes) != 0: # No child
+                new_attrib = dict(node.attrib)
+                new_attrib["innerHTML"] = node.text
+                diff = diffdict(old_attrib, new_attrib)
+                yield {"elementId": element_id, "diff": diff}
+            else:
+                yield {"elementId": element_id, "outerHTML": to_string(node)}
 
     def get_listener(
         self

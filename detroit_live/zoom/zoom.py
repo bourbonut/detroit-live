@@ -59,10 +59,8 @@ def default_wheel_delta(event: WheelEvent) -> float:
 def default_touchable(selection: LiveSelection) -> Accessor[T, bool]:
     def touchable(d: T, i: int, group: list[etree.Element]) -> bool:
         target = group[i]
-        def filter_func(node: etree.Element, typename: str, name: str) -> bool:
-            return node == target and "touchstart" == typename
         for event_listener in selection._events.values():
-            if len(event_listener.filter(filter_func)):
+            if len(event_listener.search(target, "touchstart")):
                 return True
         return False
     return touchable
