@@ -50,7 +50,8 @@ def default_html(
         )
     body = selection.select("body")
     if body._groups:
-        body.append("script").text(script)
+        if not len(body.select("[id='detroit']").nodes()):
+            body.append("script").attr("id", "detroit").text(script)
         return str(selection).replace("&lt;", "<").replace("&gt;", ">")
     else:
         selection.append("script").text(script)
@@ -1367,7 +1368,7 @@ class LiveSelection(Selection[T]):
     def create_app(
         self,
         name: str | None = None,
-        html: Callable[[TLiveSelection, ...], str] | None = None,
+        html: Callable[[TLiveSelection, str], str] | None = None,
         host: str | None = None,
         port: int | None = None,
     ) -> App:
@@ -1411,7 +1412,7 @@ class LiveSelection(Selection[T]):
 
         @app.route("/")
         async def index():
-            return default_html(self, script) if html is None else html(self)
+            return default_html(self, script) if html is None else html(self, script)
 
         app._host = host
         app._port = port

@@ -11,13 +11,6 @@ from .utils import search
 
 T = TypeVar("T")
 
-NAMESPACE = {
-    "document": "d",
-    "event": "e",
-    "socket": "s",
-    "window": "w",
-}
-
 def parse_target(
     target: str | None = None,
     typename: str | None = None,
@@ -75,10 +68,9 @@ class EventListener:
             )
 
     def into_script(self, event_json: str) -> str:
-        target = NAMESPACE.get(self.target, self.target)
         typename = repr(self.typename)
         return (
-            f"{target}.addEventListener({typename}, "
+            f"{self.target}.addEventListener({typename}, "
             f"(e) => f({event_json}, {typename}, p(e.srcElement)));"
         )
 
@@ -158,10 +150,7 @@ class EventListenersGroup:
                 yield json
 
     def event_json(self) -> str:
-        event_json = self.event.json_format()
-        for old, new in NAMESPACE.items():
-            event_json = event_json.replace(old, new)
-        return event_json
+        return self.event.json_format()
 
     def from_json(self, content: dict[str, Any]):
         return self.event.from_json(content)
@@ -172,7 +161,7 @@ class EventListenersGroup:
             typenames = list(self._event_listeners)
             listeners = [
                 (
-                    f"w.addEventListener({typename!r}, (e) => "
+                    f"window.addEventListener({typename!r}, (e) => "
                     f" f({event_json}, {typename!r}, p(e.srcElement)));"
                 )
                 for typename in typenames

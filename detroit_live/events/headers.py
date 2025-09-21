@@ -1,19 +1,17 @@
 # Sorry for those who struggle to read this JavaScript code
 # This code is minified and it is JavaScript ...
 EVENT_HEADERS = """
-const s = new WebSocket("ws://localhost:5000/ws");
-const w = window;
-const d = document;
+const socket = new WebSocket("ws://localhost:5000/ws");
 
 function f(o, t, u) {
     o.elementId = u;
     o.typename = t;
-    s.send(JSON.stringify(o, null, 0));
+    socket.send(JSON.stringify(o, null, 0));
 }
 
 function p(e) {
     if (!e) return;
-    if (e === d.body) return 'body';
+    if (e === document.body) return 'body';
     let t = e.parentNode;
     if (null == t) return '';
     let r = Array.from(t.children).filter((t => t.tagName === e.tagName)),
@@ -24,10 +22,10 @@ function p(e) {
 }
 
 function q(u) {
-    return d.querySelector(u)
+    return document.querySelector(u)
 }
 
-s.addEventListener('message', (e) => {
+socket.addEventListener('message', (e) => {
     const fr = new FileReader();
     fr.onload = function(o) {
         const r = JSON.parse(o.target.result);
@@ -43,9 +41,9 @@ s.addEventListener('message', (e) => {
 });
 """
 
-# EVENT_HEADERS = "".join(
-#     s.strip() for s in EVENT_HEADERS.split("\n")
-# ).strip()
+EVENT_HEADERS = "".join(
+    s.strip() for s in EVENT_HEADERS.split("\n")
+).strip()
 
 def headers(host: str, port: int):
     return EVENT_HEADERS.replace("localhost", host).replace("5000", str(port))
