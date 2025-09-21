@@ -45,7 +45,3 @@ class Transform:
         return f"translate({self.x},{self.y}) scale({self.k})"
 
 identity = Transform(1, 0, 0)
-
-def transform(node):
-    # TODO
-    pass

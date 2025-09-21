@@ -1,8 +1,8 @@
-from ..events import EventListeners, TrackingTree
-from typing import Generic, TypeVar
+from typing import Generic
 from lxml import etree
 
-T = TypeVar("T")
+from ..events import EventListeners, TrackingTree
+from ..types import T
 
 class SharedState(Generic[T]):
     def __init__(self):

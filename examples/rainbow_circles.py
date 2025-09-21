@@ -12,14 +12,14 @@ height = 500
 
 data = [
     {"x": width * 0.5 + radius * cos(a), "y": height * 0.5 + radius * sin(a)}
-    for radius, a in ((step * sqrt(i + 0.5), theta * (i + 0.5)) for i in range(1))
+    for radius, a in ((step * sqrt(i + 0.5), theta * (i + 0.5)) for i in range(2000))
 ]
 
 svg = (
     d3live.create("svg")
     .attr("width", width)
     .attr("height", height)
-    .attr("viewBox", ", ".join(map(str, [0, 0, width, height])))
+    .attr("viewBox", " ".join(map(str, [0, 0, width, height])))
 )
 
 g = svg.append("g").attr("cursor", "grab")

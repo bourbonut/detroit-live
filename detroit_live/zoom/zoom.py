@@ -182,7 +182,8 @@ class Zoom:
     def __call__(self, selection: LiveSelection):
         selection.each(default_transform)
         (
-            selection.on("wheel.zoom", self._wheeled, extra_nodes=self._extra_nodes)
+            selection
+            .on("wheel.zoom", self._wheeled, extra_nodes=self._extra_nodes)
             .on("mousedown.zoom", self._mouse_downed, extra_nodes=self._extra_nodes)
             .on("mousemove.zoom", self._mouse_moved, extra_nodes=self._extra_nodes, active=False)
             .on("mouseup.zoom", self._mouse_upped, extra_nodes=self._extra_nodes, active=False)

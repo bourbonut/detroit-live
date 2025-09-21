@@ -33,8 +33,8 @@ s.addEventListener('message', (e) => {
         const v = JSON.parse(o.target.result);
         const el = q(v.elementId);
         if (v.diff != undefined) {
-            v.diff.change.forEach(([k, v_]) => el[k] = v_);
-            v.diff.remove.forEach(([k, _]) => el[k] = undefined);
+            v.diff.change.forEach(([k, v_]) => el.setAttribute(k, v_));
+            v.diff.remove.forEach(([k, _]) => el.removeAttribute(k));
         } else {
             el.outerHTML = v.outerHTML
         }

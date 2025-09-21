@@ -125,7 +125,7 @@ class EventListener:
         typename = repr(self.typename)
         return (
             f"{target}.addEventListener({typename}, "
-            f"(e) => {{console.log(e); f({event_json}, {typename}, p(e.srcElement))}});"
+            f"(e) => f({event_json}, {typename}, p(e.srcElement)));"
         )
 
 
@@ -180,19 +180,23 @@ class EventListenersGroup:
                     )
                     self._previous_node = next_node
                     return event_listeners
-                case "mousedown" | "mouseup":
-                    self._mousedowned_node = next_node if event_typename == "mousedown" else None
+                case "mousedown":
+                    self._mousedowned_node = next_node
 
             target = next_node if self._mousedowned_node is None else self._mousedowned_node
-            return [
+            if event_typename == "mouseup":
+                self._mousedowned_node = None
+            event_listeners = [
                 event_listener for (node, typename, _), event_listener in self._event_listeners.items()
                 if node == target and typename == event_typename
             ]
+            return event_listeners
         else: # Other event types
-            return [
+            event_listeners = [
                 event_listener for (_, typename, _), event_listener in self._event_listeners.items()
                 if typename == event_typename
             ]
+            return event_listeners
 
     def propagate(self, event: dict[str, Any]):
         typename = event["typename"]
@@ -219,7 +223,7 @@ class EventListenersGroup:
             listeners = [
                 (
                     f"w.addEventListener({typename!r}, (e) => "
-                    f"{{ f({event_json}, {typename!r}, p(e.srcElement))}});"
+                    f" f({event_json}, {typename!r}, p(e.srcElement)));"
                 )
                 for typename in typenames
             ]

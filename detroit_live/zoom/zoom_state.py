@@ -1,7 +1,7 @@
 from lxml import etree
 from typing import TypeVar
+from .transform import Transform
 
-Transform = TypeVar("Transform", bound="Transform")
 Gesture = TypeVar("Gesture", bound="Gesture")
 
 class ZoomState:

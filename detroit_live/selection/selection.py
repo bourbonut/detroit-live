@@ -1351,7 +1351,7 @@ class LiveSelection(Selection[T]):
 
         Returns
         -------
-        TLiveSelection
+        LiveSelection
             Itself
         """
         set_event = set_active(self._events, active)
@@ -1401,7 +1401,6 @@ class LiveSelection(Selection[T]):
         """
         app = App("detroit-live" if name is None else name)
         script = self._events.into_script(host, port)
-        html = default_html(self, script) if html is None else html(self)
 
         @app.websocket("/ws")
         async def ws():
@@ -1412,7 +1411,7 @@ class LiveSelection(Selection[T]):
 
         @app.route("/")
         async def index():
-            return html
+            return default_html(self, script) if html is None else html(self)
 
         app._host = host
         app._port = port

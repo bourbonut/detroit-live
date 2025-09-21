@@ -39,10 +39,11 @@ class ContextListener(Generic[T]):
         node = self.get_node()
         self._listener(event, self._data_accessor(node), node)
 
+        nodes = set(self._updated_nodes)
         for node, old_attrib, sha256_value in states:
             if sha256_value != sha256(to_bytes(node)).digest():
                 element_id = xpath_to_query_selector(ttree.get_path(node))
-                if len(node) == 0: # No child
+                if len(node) == 0 or len(set(node) | nodes) != 0: # No child
                     new_attrib = dict(node.attrib)
                     new_attrib["innerHTML"] = node.text
                     diff = diffdict(old_attrib, new_attrib)

@@ -5,7 +5,7 @@ from detroit.types import Accessor
 from typing import TypeVar
 from .drag_event import DragEvent
 from .noevent import noevent
-from ..dispatch import dispatch
+from ..dispatch import Dispatch, dispatch
 from ..events import MouseEvent, Event, pointer
 from ..selection import LiveSelection, select
 from ..types import EventFunction, T
@@ -40,13 +40,13 @@ class Gesture:
 
     def __init__(
         self,
-        drag,
-        event,
-        d,
-        node,
-        identifier,
-        dispatch,
-        subject,
+        drag: TDrag,
+        event: MouseEvent,
+        d: T,
+        node: etree.Element,
+        identifier: str,
+        dispatch: Dispatch,
+        subject: T | dict[str, float],
         p: tuple[float, float]
     ):
         self._drag = drag
@@ -95,20 +95,23 @@ class Drag:
     def __init__(self, extra_nodes: list[etree.Element] | None = None):
         self._extra_nodes = extra_nodes
         self._filter = argpass(default_filter)
+        self._container = argpass(default_container)
         self._subject = argpass(default_subject)
         self._touchable = default_touchable
         self._gestures = {}
         self._listeners = dispatch("start", "drag", "end")
+        self._container_element = None
         self._active = 0
-        self._mouse_down_x = None
-        self._mouse_down_y = None
-        self._mouse_moving = None
+        self._mouse_down_x = 0
+        self._mouse_down_y = 0
+        self._mouse_moving = False
         self._touch_ending = None
         self._click_distance_2 = 0
 
     def __call__(self, selection: LiveSelection):
         (
-            selection.on("mousedown.drag", self._mouse_downed, self._extra_nodes)
+            selection
+            .on("mousedown.drag", self._mouse_downed, self._extra_nodes)
             .on("mousemove.drag", self._mouse_moved, self._extra_nodes, active=False)
             .on("dragstart.drag", noevent, self._extra_nodes, active=False)
             .on("mouseup.drag", self._mouse_upped, self._extra_nodes, active=False)
@@ -138,15 +141,16 @@ class Drag:
             case "end":
                 self._gestures.pop(identifier)
                 self._active -= 1
-                p = pointer(touch or event)
+                p = pointer(touch or event, self._container_element)
                 n = self._active
             case "drag":
-                p = pointer(touch or event)
+                p = pointer(touch or event, self._container_element)
                 n = self._active
         return p, n
 
     def _before_start(
         self,
+        container: etree.Element,
         event: MouseEvent,
         d: T | None,
         node: etree.Element,
@@ -154,7 +158,8 @@ class Drag:
         touch: Event | None = None,
     ) -> Gesture | None:
         dispatch = self._listeners.copy()
-        p = pointer(touch or event)
+        self._container_element = container
+        p = pointer(touch or event, container)
         subject = self._subject(DragEvent(
             event_type="beforestart",
             source_event=event,
@@ -176,7 +181,7 @@ class Drag:
     def _mouse_downed(self, event: MouseEvent, d: T | None, node: etree.Element):
         if self._touch_ending or not self._filter(event, d, node):
             return
-        gesture = self._before_start(event, d, node, "mouse")
+        gesture = self._before_start(self._container(event, d, node), event, d, node, "mouse")
         if gesture is None:
             return
         select(node).set_event("mousemove.drag mouseup.drag dragstart.drag", True)
@@ -200,8 +205,9 @@ class Drag:
         if not self._filter(event, d, node):
             return
         touches = event.changed_touches # touch event ?
+        c = self._container(event, d, node)
         for touch in touches:
-            if gesture := self._before_start(event, d, node, touch["identifier"], touch):
+            if gesture := self._before_start(c, event, d, node, touch["identifier"], touch):
                 gesture("start", event, touch)
 
     def _touch_moved(self, event: MouseEvent, d: T | None, node: etree.Element):
