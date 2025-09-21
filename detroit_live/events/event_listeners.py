@@ -146,8 +146,7 @@ class EventListenersGroup:
         for event_listener in result:
             if not event_listener.active:
                 continue
-            for json in event_listener.listener(event):
-                yield json
+            yield list(event_listener.listener(event))
 
     def event_json(self) -> str:
         return self.event.json_format()

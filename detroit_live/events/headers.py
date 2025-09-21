@@ -6,7 +6,35 @@ const socket = new WebSocket("ws://localhost:5000/ws");
 function f(o, t, u) {
     o.elementId = u;
     o.typename = t;
+    point = pointer(o, document.querySelector("svg"));
+    o.pageX = point[0];
+    o.pageY = point[1];
     socket.send(JSON.stringify(o, null, 0));
+}
+
+function sourceEvent(event) {
+  let sourceEvent;
+  while (sourceEvent = event.sourceEvent) event = sourceEvent;
+  return event;
+}
+
+function pointer(event, node) {
+  event = sourceEvent(event);
+  if (node === undefined) node = event.currentTarget;
+  if (node) {
+    var svg = node.ownerSVGElement || node;
+    if (svg.createSVGPoint) {
+      var point = svg.createSVGPoint();
+      point.x = event.clientX, point.y = event.clientY;
+      point = point.matrixTransform(node.getScreenCTM().inverse());
+      return [point.x, point.y];
+    }
+    if (node.getBoundingClientRect) {
+      var rect = node.getBoundingClientRect();
+      return [event.clientX - rect.left - node.clientLeft, event.clientY - rect.top - node.clientTop];
+    }
+  }
+  return [event.pageX, event.pageY];
 }
 
 function p(e) {
@@ -28,14 +56,17 @@ function q(u) {
 socket.addEventListener('message', (e) => {
     const fr = new FileReader();
     fr.onload = function(o) {
-        const r = JSON.parse(o.target.result);
-        const el = q(r.elementId);
-        if (r.diff != undefined) {
-            r.diff.change.forEach(([k, v]) => k === "innerHTML" ? el[k] = v: el.setAttribute(k, v));
-            r.diff.remove.forEach(([k, _]) => k === "innerHTML" ? el[k] = undefined : el.removeAttribute(k));
-        } else {
-            el.outerHTML = r.outerHTML
-        }
+        JSON.parse(o.target.result).forEach(
+            function(r) {
+                const el = q(r.elementId);
+                if (r.diff != undefined) {
+                    r.diff.change.forEach(([k, v]) => k === "innerHTML" ? el[k] = v: el.setAttribute(k, v));
+                    r.diff.remove.forEach(([k, _]) => k === "innerHTML" ? el[k] = undefined : el.removeAttribute(k));
+                } else {
+                    el.outerHTML = r.outerHTML
+                }
+            }
+        )
     };
     fr.readAsText(e.data);
 });

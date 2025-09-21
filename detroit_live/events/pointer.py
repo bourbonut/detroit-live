@@ -26,7 +26,7 @@ def pointer(event: MouseEvent | WheelEvent, node: Optional[etree.Element] = None
                             category=UserWarning,
                         )
             return (event.client_x - tx) / k, (event.client_y - ty) / k
+        # return event.client_x - event.rect_left, event.client_y - event.rect_top
         return event.page_x, event.page_y
     else:
         return event.client_x, event.client_y
-        # return event.client_x - event.rect_left, event.client_y - event.rect_top
