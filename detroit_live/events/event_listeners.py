@@ -18,52 +18,6 @@ NAMESPACE = {
     "window": "w",
 }
 
-def to_bytes(node: etree.Element) -> bytes:
-    """
-    Converts a node element into bytes.
-
-    Parameters
-    ----------
-    node : etree.Element
-        Node element
-
-    Returns
-    -------
-    bytes
-        Bytes content of the node
-    """
-    return etree.tostring(node).removesuffix(b"\n")
-
-def to_string(node: etree.Element) -> str:
-    """
-    Converts a node element into text.
-
-    Parameters
-    ----------
-    node : etree.Element
-        Node element
-
-    Returns
-    -------
-    str
-        Text content of the node.
-    """
-    return etree.tostring(node, method="html").decode("utf-8").removesuffix("\n")
-
-def diffdict(old: dict, new: dict) -> dict:
-    change = []
-    remove = []
-    okeys = old.keys()
-    nkeys = new.keys()
-    for key in nkeys - okeys:
-        change.append([key, new[key]])
-    for key in okeys & nkeys:
-        if old[key] != new[key]:
-            change.append([key, new[key]])
-    for key in okeys - nkeys:
-        remove.append([key, old[key]])
-    return {"remove": remove, "change": change}
-
 def parse_target(
     target: str | None = None,
     typename: str | None = None,
