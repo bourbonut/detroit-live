@@ -10,7 +10,7 @@
 | selection       | Yes      | No       |                                 |
 | timer           | Yes      | No       |                                 |
 | transition      | No       | -        |                                 |
-| zoom            | No       | -        |                                 |
+| zoom            | Yes      | -        |                                 |
 
 
 ## Examples
