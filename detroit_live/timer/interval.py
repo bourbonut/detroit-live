@@ -2,6 +2,8 @@ from collections.abc import Callable
 from .timer import Timer, now
 import time
 
+FRAME_TIME = 0.017 # 504 * 1e-6
+
 class Interval(Timer):
 
     def __init__(self, delay: float):
@@ -23,7 +25,7 @@ class Interval(Timer):
         self._callback = callback
 
         while not self._stop:
-            time.sleep(0.017 + delay)
+            time.sleep(FRAME_TIME + delay)
             self._callback((now() - self._start) * 1e3, self.stop)
 
 
