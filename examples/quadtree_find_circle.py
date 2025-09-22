@@ -29,6 +29,10 @@ circle.find {
   stroke-width: 5px;
 }
 
+circle.radius {
+  fill: none;
+}
+
 rect {
   fill: none;
   stroke: none;
@@ -38,10 +42,6 @@ rect {
 rect.visited {
   stroke: #888;
   stroke-width: 1px;
-}
-
-circle.radius {
-  fill: none;
 }
 """
 
@@ -109,19 +109,17 @@ def find_in_circle_mark(quadtree, x, y, radius):
     quadtree.visit(visit)
     return result
 
-data = [{"x": random() * width, "y": random() * height} for _ in range(250)]
+data = [{"x": random() * width, "y": random() * height} for _ in range(1000)]
 quadtree = d3.quadtree().x(lambda d: d["x"]).y(lambda d: d["y"]).set_extent([[-1, -1], [width + 1, height + 1]]).add_all(data)
 
 html = d3live.create("html")
-head = html.append("head")
+head = html.append("head").append("style").text(style)
 svg = (
     html.append("body")
     .append("svg")
     .attr("viewBox", " ".join(map(str, [0, 0, width, height])))
     .style("cursor", "crosshair")
 )
-
-svg.append("style").text(style)
 
 quad = (
     svg.select_all(".node")
@@ -142,6 +140,7 @@ circle = (
     .attr("r", lambda d: d)
     .attr("class", "radius")
     .attr("stroke", "orange")
+    .attr("fill", "none")
 )
 
 point = (
@@ -163,6 +162,7 @@ def quad_each(_, d):
             node[4]["visited"] = False
     else:
         node["visited"] = False
+
 def point_each(_, d):
     d["visited"] = False
 
