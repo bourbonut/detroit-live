@@ -13,6 +13,8 @@ from .utils import (
 
 T = TypeVar("T")
 
+EMPTY_DIFF = {'remove': [], 'change': []}
+
 class ContextListener(Generic[T]):
     def __init__(
         self,
@@ -26,12 +28,7 @@ class ContextListener(Generic[T]):
 
     def __call__(self, event: Event):
         ttree = TrackingTree()
-        states = [
-            (
-                node,
-                get_node_attribs(node),
-            ) for node in self._updated_nodes
-        ]
+        states = [(node, get_node_attribs(node)) for node in self._updated_nodes]
 
         node = self.get_node()
         self._listener(event, self._data_accessor(node), node)
@@ -43,7 +40,8 @@ class ContextListener(Generic[T]):
                 new_attrib = dict(node.attrib)
                 new_attrib["innerHTML"] = node.text
                 diff = diffdict(old_attrib, new_attrib)
-                yield {"elementId": element_id, "diff": diff}
+                if diff != EMPTY_DIFF:
+                    yield {"elementId": element_id, "diff": diff}
             else:
                 yield {"elementId": element_id, "outerHTML": to_string(node)}
 

@@ -56,17 +56,25 @@ function q(u) {
 socket.addEventListener('message', (e) => {
     const fr = new FileReader();
     fr.onload = function(o) {
-        JSON.parse(o.target.result).forEach(
-            function(r) {
-                const el = q(r.elementId);
-                if (r.diff != undefined) {
-                    r.diff.change.forEach(([k, v]) => k === "innerHTML" ? el[k] = v: el.setAttribute(k, v));
-                    r.diff.remove.forEach(([k, _]) => k === "innerHTML" ? el[k] = undefined : el.removeAttribute(k));
-                } else {
-                    el.outerHTML = r.outerHTML
+        const t = JSON.parse(o.target.result);
+        for (var i1 = 0, r, n = t.length; i1 < n; ++i1) {
+            r = t[i1];
+            const el = q(r.elementId);
+            if (r.diff != undefined) {
+                var c = r.diff.change;
+                for (var i2 = 0, k, v, m = c.length; i2 < m; ++i2) {
+                    [k, v] = c[i2];
+                    k === "innerHTML" ? el[k] = v: el.setAttribute(k, v)
                 }
+                c = r.diff.remove;
+                for (var i2 = 0, k, v, m = c.length; i2 < m; ++i2) {
+                    [k, v] = c[i2];
+                    k === "innerHTML" ? el[k] = undefined : el.removeAttribute(k);
+                }
+            } else {
+                el.outerHTML = r.outerHTML;
             }
-        )
+        }
     };
     fr.readAsText(e.data);
 });
