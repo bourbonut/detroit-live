@@ -134,7 +134,7 @@ def node_attribs(node: etree.Element, with_inner_html: bool = False) -> dict[str
     return attribs
 
 def search(mapping: dict[U, ...] | V, keys: list[Any], depth: int = 0) -> Iterator[V]:
-    if depth + 1 >= len(keys): # max depth
+    if depth + 1 > len(keys): # max depth
         if isinstance(mapping, dict):
             for value in mapping.values():
                 yield value

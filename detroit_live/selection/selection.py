@@ -1410,6 +1410,12 @@ class LiveSelection(Selection[T]):
         App
             Application for allowing interactivity.
         """
+        import logging
+        logging.basicConfig(
+            format='%(asctime)s [%(process)d] [%(levelname)s] %(message)s',
+            datefmt='[%Y-%m-%d %H:%M:%S %z]',
+            level=logging.WARNING
+        )
         app = App("detroit-live" if name is None else name)
         script = self._events.into_script(host, port)
 

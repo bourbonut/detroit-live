@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-import warnings
+import logging
 from typing import Any, Optional, TypeVar
 
 from lxml import etree
@@ -12,6 +12,8 @@ from .utils import search, xpath_to_query_selector
 
 T = TypeVar("T")
 
+log = logging.getLogger(__name__)
+
 def parse_target(
     target: str | None = None,
     typename: str | None = None,
@@ -19,8 +21,6 @@ def parse_target(
 ):
     if target is not None:
         return target
-    if typename == "open":
-        return "socket"
     match typename:
         case "change":
             ttree = TrackingTree()
@@ -87,9 +87,6 @@ class EventListenersGroup:
         self._previous_node = None
         self._mousedowned_node = None
 
-    def __contains__(self, key: tuple[etree.Element, str, str]) -> bool:
-        return key in self._event_listeners
-
     def __setitem__(self, key: tuple[etree.Element, str, str], event_listener: EventListener):
         node, typename, name = key
         (self._event_listeners.setdefault(typename, {}).setdefault(node, {})[name]) = event_listener
@@ -100,11 +97,12 @@ class EventListenersGroup:
             if by_names := by_nodes.get(node):
                 return by_names.get(name)
 
-    def pop(self, key: tuple[etree.Element, str, str], default: Any = None) -> EventListener | None:
+    def pop(self, key: tuple[etree.Element, str, str], default: Any = None) -> EventListener | Any:
         node, typename, name = key
         if by_nodes := self._event_listeners.get(typename):
             if by_names := by_nodes.get(node):
                 return by_names.pop(name, default)
+        return default
 
     def search(
         self,
@@ -189,7 +187,7 @@ class EventListeners:
     def __call__(self, event: dict[str, Any]):
         event_type = event.get("type")
         if event_type is None:
-            warnings.warn(f"Unknown type message {event_type!r} (event={event})")
+            log.warning(f"Unknown type message {event_type!r} (event={event})")
         if event_listener_group := self._event_listeners.get(event_type):
             for json in event_listener_group.propagate(event):
                 yield json
@@ -197,10 +195,6 @@ class EventListeners:
     def add_event_listener(self, target: EventListener):
         key = (target.node, target.typename, target.name)
         event_type = parse_event(target.typename).__name__
-        if event_listeners_group := self._event_listeners.get(event_type):
-            if key in event_listeners_group:
-                event_listeners_group[key] = target
-                return
         event_listeners_group = (
             self._event_listeners.setdefault(
                 event_type,

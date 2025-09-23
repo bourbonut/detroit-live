@@ -82,14 +82,13 @@ class MouseEvent(Event):
     ctrl_key: bool
     shift_key: bool
     alt_key: bool
-    element_id: int
+    element_id: str
     rect_top: int
     rect_left: int
 
     @classmethod
     def json_format(cls: type[Self]) -> str:
         return json_format(cls, "event", {
-            "element_id": "srcElement.id",
             "rect_top": "srcElement.getBoundingClientRect().top",
             "rect_left": "srcElement.getBoundingClientRect().left",
         })

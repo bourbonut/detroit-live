@@ -54,7 +54,9 @@ class ContextListener(Generic[T]):
             f"ContextListener(listener={self._listener},"
             f" node={self.get_node()},"
             f" data={self._data_accessor(self.get_node())},"
-            f" updated_nodes={self._updated_nodes})"
+            f" updated_nodes={self._updated_nodes},"
+            f" html_nodes={self._html_nodes},"
+            ")"
         )
 
     def __repr__(self):

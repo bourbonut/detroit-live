@@ -1,6 +1,8 @@
 from lxml import etree
 from .utils import get_root
-import warnings
+import logging
+
+log = logging.getLogger(__name__)
 
 class CacheTree:
 
@@ -116,10 +118,7 @@ class TrackingTree:
             try:
                 node = self.__tree.xpath(f"/{root_tag}/{path}")[0]
             except IndexError:
-                warnings.warn(
-                    f"{path!r} not found in XML tree (root={root_tag}).",
-                    category=RuntimeWarning,
-                )
+                log.warning(f"{path!r} not found in XML tree (root={root_tag}).")
                 node = None
         self.__cache_node[path] = node
         self.__cache_path[node] = path
