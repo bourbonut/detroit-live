@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import warnings
 from typing import Any, Optional, TypeVar
 
 from lxml import etree
@@ -7,7 +8,7 @@ from .base import Event
 from .context_listener import ContextListener
 from .types import parse_event
 from .headers import headers
-from .utils import search
+from .utils import search, xpath_to_query_selector
 
 T = TypeVar("T")
 
@@ -20,9 +21,12 @@ def parse_target(
         return target
     if typename == "open":
         return "socket"
-    if node is not None:
-        return "document"
     match typename:
+        case "change":
+            ttree = TrackingTree()
+            path = ttree.get_path(node)
+            selector = xpath_to_query_selector(path)
+            return f"document.querySelector({selector!r})"
         case "open":
             return "socket"
         case "resize":
@@ -184,6 +188,8 @@ class EventListeners:
 
     def __call__(self, event: dict[str, Any]):
         event_type = event.get("type")
+        if event_type is None:
+            warnings.warn(f"Unknown type message {event_type!r} (event={event})")
         if event_listener_group := self._event_listeners.get(event_type):
             for json in event_listener_group.propagate(event):
                 yield json

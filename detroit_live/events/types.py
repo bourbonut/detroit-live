@@ -19,6 +19,18 @@ def json_format(cls: type[Self], prefix: str, mapping: dict[str, str]) -> str:
 def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
     return cls(*(content.get(snake_to_camel(attr)) for attr in cls.__annotations__))
 
+@dataclass
+class ChangeEvent(Event):
+    value: str
+
+    @classmethod
+    def json_format(cls: type[Self]) -> str:
+        return "{value: e.srcElement.value, type: 'ChangeEvent'}"
+
+    @classmethod
+    def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
+        return from_json(cls, content)
+
 
 @dataclass
 class WindowSizeEvent(Event):
@@ -93,6 +105,8 @@ def parse_event(typename: str | None = None) -> type[Event]:
             return WindowSizeEvent
         case "resize":
             return WindowSizeEvent
+        case "change":
+            return ChangeEvent
         case "wheel":
             return WheelEvent
         case _:

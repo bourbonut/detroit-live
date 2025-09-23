@@ -60,7 +60,7 @@ def xpath_to_query_selector(path: str) -> str:
             string.write(f" {el}:nth-of-type({times})")
         else:
             string.write(f" {el}")
-    return string.getvalue()
+    return string.getvalue().strip()
 
 def diffdict(old: dict[str, Any], new: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """
@@ -92,9 +92,10 @@ def diffdict(old: dict[str, Any], new: dict[str, Any]) -> dict[str, dict[str, An
         remove.append([key, old[key]])
     return {"remove": remove, "change": change}
 
-def get_node_attribs(node: etree.Element) -> dict[str, Any]:
+
+def inner_html(node: etree.Element) -> str:
     """
-    Gets the attributes of a node
+    Returns the inner HTML of a node
 
     Parameters
     ----------
@@ -103,11 +104,36 @@ def get_node_attribs(node: etree.Element) -> dict[str, Any]:
 
     Returns
     -------
+    str
+        Inner HTML
+    """
+    string = to_string(node)
+    parts = string.split(">")[:-1]
+    parts[-1] = "<".join(parts[-1].split("<")[:-1])
+    return ">".join(parts[1:])
+
+def node_attribs(node: etree.Element, updated_nodes: set[etree.Element]) -> dict[str, Any]:
+    """
+    Gets the attributes of a node. The attribute :code:`innerHTML` is the text
+    value of the :code:`node` if the :code:`node` has no child or common
+    updated nodes else it is the inner string of the node.
+
+    Parameters
+    ----------
+    node : etree.Element
+        Node
+    updated_nodes : set[etree.Element]
+        Updated nodes
+
+    Returns
+    -------
     dict[str, Any]
         Attributes of the node
     """
     attribs = dict(node.attrib)
-    attribs["innerHTML"] = node.text
+    children = set(node)
+    if len(children) == 0 or len(children & updated_nodes) == 0:
+        attribs["innerHTML"] = node.text # or inner_html(node)
     return attribs
 
 def search(mapping: dict[U, ...] | V, keys: list[Any], depth: int = 0) -> Iterator[V]:

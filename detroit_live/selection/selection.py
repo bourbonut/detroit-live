@@ -54,7 +54,7 @@ def default_html(
             body.append("script").attr("id", "detroit").text(script)
         return str(selection).replace("&lt;", "<").replace("&gt;", ">")
     else:
-        selection.append("script").text(script)
+        selection.append("script").attr("id", "detroit").text(script)
         return str(selection).replace("&lt;", "<").replace("&gt;", ">")
 
 class LiveSelection(Selection[T]):
