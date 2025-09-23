@@ -1294,6 +1294,7 @@ class LiveSelection(Selection[T]):
         typename: str,
         listener: Callable[[Event, T | None, Optional[etree.Element]], None] | None = None,
         extra_nodes: list[etree.Element] | None = None,
+        html_nodes: list[etree.Element] | None = None,
         active: bool = True,
         target: str | None = None,
     ) -> TLiveSelection:
@@ -1323,12 +1324,21 @@ class LiveSelection(Selection[T]):
             Itself
         """
         extra_nodes = [] if extra_nodes is None else extra_nodes
+        html_nodes = [] if html_nodes is None else html_nodes
         typenames = list(parse_typenames(typename))
 
         on = (
             on_remove(self._events)
             if listener is None else
-            on_add(self._events, listener, self._data.get, extra_nodes, active, target)
+            on_add(
+                self._events,
+                listener,
+                self._data.get,
+                extra_nodes,
+                html_nodes,
+                active,
+                target,
+            )
         )
         nodes = [node for group in self._groups for node in group]
         for node in filter(lambda n: n is not None, nodes):

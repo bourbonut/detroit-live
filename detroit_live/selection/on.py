@@ -10,6 +10,7 @@ def on_add(
     listener: Callable[[Event, T | None, Optional[etree.Element]], None],
     data_accessor: Callable[[etree.Element], T],
     extra_nodes: list[etree.Element],
+    html_nodes: list[etree.Element],
     active: bool,
     target: str | None,
 ) -> Callable[[str, str, etree.Element], None]:
@@ -21,6 +22,7 @@ def on_add(
                 name,
                 ContextListener(
                     updated_nodes,
+                    html_nodes,
                     listener,
                     data_accessor,
                 ),

@@ -43,7 +43,6 @@ select2 = (
 )
 
 def foo(event, d, node):
-    print(event)
     select1.select_all().remove()
     index = cars.index(event.value)
     options = (
@@ -70,6 +69,6 @@ def foo(event, d, node):
         .text(lambda d: d)
     )
 
-select1.on("change", foo, extra_nodes=[select2.node()])
+select1.on("change", foo, extra_nodes=[select2.node()], html_nodes=[select1.node(), select2.node()])
 
 html.create_app().run()

@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from lxml import etree
 from typing import Generic, Optional, TypeVar
-from operator import itemgetter
 
 from .tracking_tree import TrackingTree
 from .base import Event
@@ -19,24 +18,25 @@ class ContextListener(Generic[T]):
     def __init__(
         self,
         updated_nodes: list[etree.Element],
+        html_nodes: list[etree.Element],
         listener: Callable[[Event, T | None, Optional[etree.Element]], None],
         data_accessor: Callable[[etree.Element], T],
     ):
         self._updated_nodes = updated_nodes
+        self._html_nodes = set(html_nodes)
         self._listener = listener
         self._data_accessor = data_accessor
 
     def __call__(self, event: Event):
         ttree = TrackingTree()
-        hashed_nodes = set(self._updated_nodes)
-        states = [(node, node_attribs(node, hashed_nodes)) for node in self._updated_nodes]
+        states = [(node, node_attribs(node, node in self._html_nodes)) for node in self._updated_nodes]
 
         node = self.get_node()
         self._listener(event, self._data_accessor(node), node)
 
         for node, old_attrib in states:
             element_id = xpath_to_query_selector(ttree.get_path(node))
-            new_attrib = node_attribs(node, hashed_nodes)
+            new_attrib = node_attribs(node, node in self._html_nodes)
             diff = diffdict(old_attrib, new_attrib)
             if diff != EMPTY_DIFF:
                 yield {"elementId": element_id, "diff": diff}

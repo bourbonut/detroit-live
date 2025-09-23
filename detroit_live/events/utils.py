@@ -112,18 +112,16 @@ def inner_html(node: etree.Element) -> str:
     parts[-1] = "<".join(parts[-1].split("<")[:-1])
     return ">".join(parts[1:])
 
-def node_attribs(node: etree.Element, updated_nodes: set[etree.Element]) -> dict[str, Any]:
+def node_attribs(node: etree.Element, with_inner_html: bool = False) -> dict[str, Any]:
     """
-    Gets the attributes of a node. The attribute :code:`innerHTML` is the text
-    value of the :code:`node` if the :code:`node` has no child or common
-    updated nodes else it is the inner string of the node.
+    Gets the attributes of a node.
 
     Parameters
     ----------
     node : etree.Element
         Node
-    updated_nodes : set[etree.Element]
-        Updated nodes
+    with_inner_html : bool
+        :code:`True` for adding :code:`innerHTML` value
 
     Returns
     -------
@@ -131,9 +129,8 @@ def node_attribs(node: etree.Element, updated_nodes: set[etree.Element]) -> dict
         Attributes of the node
     """
     attribs = dict(node.attrib)
-    children = set(node)
-    if len(children) == 0 or len(children & updated_nodes) == 0:
-        attribs["innerHTML"] = node.text # or inner_html(node)
+    if with_inner_html:
+        attribs["innerHTML"] = node.text or inner_html(node)
     return attribs
 
 def search(mapping: dict[U, ...] | V, keys: list[Any], depth: int = 0) -> Iterator[V]:
