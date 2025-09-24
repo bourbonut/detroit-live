@@ -3,12 +3,10 @@ from collections.abc import Callable
 
 from .timer import Timer, now
 
-FRAME_TIME = 0.017  # 504 * 1e-6
-
 
 class Interval(Timer):
-    def __init__(self, delay: float):
-        super().__init__()
+    def __init__(self, delay: float, sleep_delay: float = 0.017):
+        super().__init__(sleep_delay)
 
     def restart(
         self,
@@ -26,7 +24,7 @@ class Interval(Timer):
         self._callback = callback
 
         while not self._stop:
-            time.sleep(FRAME_TIME + delay)
+            time.sleep(self._sleep_delay + delay)
             self._callback((now() - self._start) * 1e3, self.stop)
 
 
@@ -34,6 +32,7 @@ def interval(
     callback: Callable[[float, Callable[[None], None]], None],
     delay: float | None = None,
     starting_time: float | None = None,
+    sleep_delay: float = 0.017,
 ) -> Timer | Interval:
     """
     The :code:`callback` is invoked only every delay milliseconds; if
@@ -47,12 +46,14 @@ def interval(
         Delay value
     starting_time : float | None
         Starting time value
+    sleep_delay : float
+        Time delay passed to :code:`time.sleep`; it defaults to :code:`0.017`.
 
     Returns
     -------
     Timer | Interval
         :code:`Timer` if :code:`delay` is not specified else :code:`Interval`.
     """
-    timer = Timer() if delay is None else Interval(delay)
+    timer = Timer(sleep_delay) if delay is None else Interval(delay, sleep_delay)
     timer.restart(callback, delay, starting_time)
     return timer
