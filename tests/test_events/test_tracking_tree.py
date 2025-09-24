@@ -15,4 +15,4 @@ def test_tracking_tree_1():
 
     assert ttree.get_path(circle1.node()) == "/g[1]/circle[1]"
     assert ttree.get_path(circle2.node()) == "/g[2]/circle[1]"
-    assert ttree.get_path(svg.node()) == ".[1]"
+    assert ttree.get_path(svg.node()) == "svg/.[1]"
