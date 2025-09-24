@@ -1,10 +1,9 @@
 from typing import Union
 
-import pytest
-from lxml import etree
-
 import detroit as d3
+import pytest
 from detroit.selection.enter import EnterNode
+from lxml import etree
 
 
 @pytest.fixture
@@ -641,11 +640,13 @@ def test_selection_48():
     assert text.style("stroke") == "white"
     assert text.attr("style") == "fill:blue;stroke:white;"
 
+
 def test_selection_49():
     svg = d3.create("svg")
 
     svg.attr("viewBox", [0, 0, 100, 200])
     assert svg.attr("viewBox") == "0 0 100 200"
+
 
 def test_selection_50():
     svg = d3.create("svg")

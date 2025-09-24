@@ -1,9 +1,17 @@
-from detroit_live.events.event_listeners import parse_target, EventListener, EventListenersGroup, EventListeners, TrackingTree
-from detroit_live.events.context_listener import ContextListener
-from detroit_live.events.types import MouseEvent
-from detroit_live.events.tracking_tree import TrackingTree
-import detroit_live as d3
 import pytest
+
+import detroit_live as d3
+from detroit_live.events.context_listener import ContextListener
+from detroit_live.events.event_listeners import (
+    EventListener,
+    EventListeners,
+    EventListenersGroup,
+    TrackingTree,
+    parse_target,
+)
+from detroit_live.events.tracking_tree import TrackingTree
+from detroit_live.events.types import MouseEvent
+
 
 @pytest.mark.parametrize(
     "target, typename, node, expected",
@@ -15,12 +23,14 @@ import pytest
         [None, "wheel", None, "window"],
         [None, "mouseover", None, "document"],
         [None, "change", None, "document.querySelector('select')"],
-    ]
+    ],
 )
 def test_parse_target(target, typename, node, expected, monkeypatch):
     if typename == "change":
+
         def mock_get_path(self, node):
             return "select"
+
         monkeypatch.setattr(TrackingTree, "get_path", mock_get_path)
     assert parse_target(target, typename, node) == expected
 
@@ -36,9 +46,7 @@ def test_event_listener():
         return "Hello world"
 
     event_listener = EventListener(
-        "mouseover",
-        "drag",
-        ContextListener([svg.node()], [], listener, data_accessor)
+        "mouseover", "drag", ContextListener([svg.node()], [], listener, data_accessor)
     )
     assert event_listener.node == svg.node()
     assert event_listener.target == "document"
@@ -55,6 +63,7 @@ def test_event_listener():
         "document.addEventListener('mouseover', "
         "(e) => f({hello: 'world'}, 'mouseover', p(e.srcElement)));"
     )
+
 
 def test_event_listeners_group_1():
     group = EventListenersGroup("mouseover")
@@ -86,9 +95,7 @@ def group_and_svg():
         ("click", ""),
     ]:
         group[(svg.node(), typename, name)] = EventListener(
-            typename,
-            name,
-            ContextListener([svg.node()], [], listener, data_accessor)
+            typename, name, ContextListener([svg.node()], [], listener, data_accessor)
         )
     return group, svg.node()
 
@@ -98,12 +105,14 @@ def test_event_listeners_group_2(group_and_svg):
     assert group.get((svg, "mouseover", "drag")) is not None
     assert group.get((svg, "click", "drag")) is None
     assert group.get((svg, "click", "")) is not None
-    
+
+
 def test_event_listeners_group_3(group_and_svg):
     group, svg = group_and_svg
     assert group.pop((svg, "mouseup", "drag")) is not None
     assert group.get((svg, "mouseup", "drag")) is None
     assert group.pop((svg, "mouseup", "drag"), "foo") == "foo"
+
 
 def test_event_listeners_group_4(group_and_svg):
     group, svg = group_and_svg
@@ -112,6 +121,7 @@ def test_event_listeners_group_4(group_and_svg):
     assert len(group.search(typename="click")) == 1
     assert len(group.search(typename="mouseup")) == 1
     assert len(group.search(typename="change")) == 0
+
 
 def test_event_listeners_group_5(group_and_svg):
     group, _ = group_and_svg
@@ -156,6 +166,7 @@ def test_event_listeners_group_5(group_and_svg):
         "t.getBoundingClientRect().left}, 'click', p(e.srcElement)));"
     )
 
+
 def test_event_listeners_group_6(group_and_svg):
     group, svg = group_and_svg
     event = MouseEvent(
@@ -171,7 +182,7 @@ def test_event_listeners_group_6(group_and_svg):
         alt_key=True,
         element_id="svg",
         rect_top=75,
-        rect_left=100
+        rect_left=100,
     )
     ttree = TrackingTree()
     ttree.set_root(svg)
@@ -184,6 +195,7 @@ def test_event_listeners_group_6(group_and_svg):
     assert group._mousedowned_node is None
     assert len(group.filter_by(event, "click")) == 1
     assert len(group.filter_by(event, "foo")) == 0
+
 
 def test_event_listeners_group_7(group_and_svg):
     group, svg = group_and_svg
@@ -198,6 +210,7 @@ def test_event_listeners_group_7(group_and_svg):
     assert len(list(group.propagate(event))) == 0
     event = {"elementId": "foo", "typename": "mouseover"}
     assert len(list(group.propagate(event))) == 0
+
 
 @pytest.fixture
 def event_listeners_and_svg():
@@ -222,10 +235,11 @@ def event_listeners_and_svg():
             EventListener(
                 typename,
                 name,
-                ContextListener([svg.node()], [], listener, data_accessor)
+                ContextListener([svg.node()], [], listener, data_accessor),
             )
         )
     return event_listeners, svg.node()
+
 
 def test_event_listeners_1(event_listeners_and_svg):
     event_listeners, svg = event_listeners_and_svg
@@ -235,6 +249,7 @@ def test_event_listeners_1(event_listeners_and_svg):
     assert event_listeners["MouseEvent"].get((svg, "mouseover", "drag")) is None
     assert event_listeners.keys() == {"MouseEvent"}
     assert event_listeners.values() == [event_listeners["MouseEvent"]]
+
 
 def test_event_listeners_2(event_listeners_and_svg):
     event_listeners, _ = event_listeners_and_svg
@@ -294,6 +309,7 @@ def test_event_listeners_2(event_listeners_and_svg):
         """srcElement.getBoundingClientRect().top, rectLeft: event.srcElement.getBoundi"""
         """ngClientRect().left}, 'click', p(e.srcElement)));"""
     )
+
 
 def test_event_listeners_3(event_listeners_and_svg):
     event_listeners, svg = event_listeners_and_svg

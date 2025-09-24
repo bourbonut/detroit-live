@@ -3,7 +3,7 @@ from .context_listener import ContextListener
 from .event_listeners import EventListener, EventListeners, EventListenersGroup
 from .pointer import pointer
 from .tracking_tree import TrackingTree
-from .types import WindowSizeEvent, WheelEvent, MouseEvent
+from .types import MouseEvent, WheelEvent, WindowSizeEvent
 
 __all__ = [
     "ContextListener",

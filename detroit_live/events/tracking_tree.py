@@ -1,11 +1,13 @@
-from lxml import etree
-from .utils import get_root
 import logging
+
+from lxml import etree
+
+from .utils import get_root
 
 log = logging.getLogger(__name__)
 
-class CacheTree:
 
+class CacheTree:
     __slots__ = "__root", "__tree"
 
     def __init__(self):
@@ -22,6 +24,7 @@ class CacheTree:
     def get_tree(self):
         return self.__tree
 
+
 class TrackingTree:
     """
     Tracking Tree object which helps to get :code:`etree.Element` given a path
@@ -30,6 +33,7 @@ class TrackingTree:
     Once the root element is set, this object can be used globally without
     futher configuration.
     """
+
     __cache_tree = CacheTree()
     __cache_path = {}
     __cache_node = {}
@@ -86,7 +90,11 @@ class TrackingTree:
         if node in self.__cache_path:
             return self.__cache_path[node]
         path = self.__tree.getelementpath(node)
-        path = f"{self.root.tag}/{path}[1]" if path[-1] != "]" else f"{self.root.tag}/{path}"
+        path = (
+            f"{self.root.tag}/{path}[1]"
+            if path[-1] != "]"
+            else f"{self.root.tag}/{path}"
+        )
         self.__cache_path[node] = path
         self.__cache_node[path] = node
         return path
@@ -107,7 +115,7 @@ class TrackingTree:
         """
         root_tag = self.__root.tag
         if root_tag in path:
-            path = path.split(root_tag)[1] # or root_tag
+            path = path.split(root_tag)[1]  # or root_tag
         if path == "":
             return self.__root
         if path in self.__cache_node:

@@ -1,11 +1,12 @@
-from collections.abc import Callable
-from .timer import Timer, now
 import time
+from collections.abc import Callable
 
-FRAME_TIME = 0.017 # 504 * 1e-6
+from .timer import Timer, now
+
+FRAME_TIME = 0.017  # 504 * 1e-6
+
 
 class Interval(Timer):
-
     def __init__(self, delay: float):
         super().__init__()
 

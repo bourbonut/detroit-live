@@ -3,6 +3,7 @@ from typing import Any, TypeVar
 
 Self = TypeVar("Self")
 
+
 class JsonFormat(ABC):
     @abstractclassmethod
     def json_format(cls: type[Self]) -> str: ...

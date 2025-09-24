@@ -1,8 +1,10 @@
 from typing import Generic
+
 from lxml import etree
 
 from ..events import EventListeners, TrackingTree
 from ..types import T
+
 
 class SharedState(Generic[T]):
     def __init__(self):

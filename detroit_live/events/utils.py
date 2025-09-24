@@ -1,9 +1,12 @@
-from lxml import etree
 from collections.abc import Iterator
 from functools import cache
 from io import StringIO
 from typing import Any
+
+from lxml import etree
+
 from ..types import U, V
+
 
 def get_root(node: etree.Element) -> etree.Element:
     """
@@ -22,6 +25,7 @@ def get_root(node: etree.Element) -> etree.Element:
     parent = node.getparent()
     return node if parent is None else get_root(parent)
 
+
 def to_string(node: etree.Element) -> str:
     """
     Converts a node element into text.
@@ -37,6 +41,7 @@ def to_string(node: etree.Element) -> str:
         Text content of the node.
     """
     return etree.tostring(node, method="html").decode("utf-8").removesuffix("\n")
+
 
 @cache
 def xpath_to_query_selector(path: str) -> str:
@@ -62,6 +67,7 @@ def xpath_to_query_selector(path: str) -> str:
             string.write(f" {el}")
     return string.getvalue().strip()
 
+
 def diffdict(old: dict[str, Any], new: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """
     Compares two dictionary and returns the removed attributes and changes as
@@ -72,7 +78,7 @@ def diffdict(old: dict[str, Any], new: dict[str, Any]) -> dict[str, dict[str, An
     old : dict[str, Any]
         Old version of version
     new : dict[str, Any]
-       New version of values 
+       New version of values
 
     Returns
     -------
@@ -112,6 +118,7 @@ def inner_html(node: etree.Element) -> str:
     parts[-1] = "<".join(parts[-1].split("<")[:-1])
     return ">".join(parts[1:])
 
+
 def node_attribs(node: etree.Element, with_inner_html: bool = False) -> dict[str, Any]:
     """
     Gets the attributes of a node.
@@ -133,8 +140,9 @@ def node_attribs(node: etree.Element, with_inner_html: bool = False) -> dict[str
         attribs["innerHTML"] = node.text or inner_html(node)
     return attribs
 
+
 def search(mapping: dict[U, ...] | V, keys: list[Any], depth: int = 0) -> Iterator[V]:
-    if depth + 1 > len(keys): # max depth
+    if depth + 1 > len(keys):  # max depth
         if isinstance(mapping, dict):
             for value in mapping.values():
                 yield value

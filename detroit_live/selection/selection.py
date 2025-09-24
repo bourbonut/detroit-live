@@ -1,21 +1,22 @@
 from collections.abc import Callable, Iterator
 from typing import Any, Optional, TypeVar
 
+import orjson
 from detroit.selection import Selection
 from detroit.selection.enter import EnterNode
 from detroit.types import Accessor, EtreeFunction, Number, T
 from lxml import etree
 from quart import websocket
-import orjson
 
-from ..events import Event, TrackingTree
 from ..dispatch import parse_typenames
-from .shared import SharedState
-from .on import on_add, on_remove
+from ..events import Event, TrackingTree
 from .active import set_active
 from .app import App
+from .on import on_add, on_remove
+from .shared import SharedState
 
 TLiveSelection = TypeVar("LiveSelection", bound="LiveSelection")
+
 
 def default_html(
     selection: TLiveSelection,
@@ -45,9 +46,7 @@ def default_html(
     node = ttree.root
     tag = node.tag
     if tag != "html":
-        return (
-            f"<html><body>{selection}<script>{script}</script></body></html>"
-        )
+        return f"<html><body>{selection}<script>{script}</script></body></html>"
     body = selection.select("body")
     if body._groups:
         if not len(body.select("[id='detroit']").nodes()):
@@ -56,6 +55,7 @@ def default_html(
     else:
         selection.append("script").attr("id", "detroit").text(script)
         return str(selection).replace("&lt;", "<").replace("&gt;", ">")
+
 
 class LiveSelection(Selection[T]):
     """
@@ -1292,7 +1292,8 @@ class LiveSelection(Selection[T]):
     def on(
         self,
         typename: str,
-        listener: Callable[[Event, T | None, Optional[etree.Element]], None] | None = None,
+        listener: Callable[[Event, T | None, Optional[etree.Element]], None]
+        | None = None,
         extra_nodes: list[etree.Element] | None = None,
         html_nodes: list[etree.Element] | None = None,
         active: bool = True,
@@ -1329,8 +1330,8 @@ class LiveSelection(Selection[T]):
 
         on = (
             on_remove(self._events)
-            if listener is None else
-            on_add(
+            if listener is None
+            else on_add(
                 self._events,
                 listener,
                 self._data.get,
@@ -1411,10 +1412,11 @@ class LiveSelection(Selection[T]):
             Application for allowing interactivity.
         """
         import logging
+
         logging.basicConfig(
-            format='%(asctime)s [%(process)d] [%(levelname)s] %(message)s',
-            datefmt='[%Y-%m-%d %H:%M:%S %z]',
-            level=logging.WARNING
+            format="%(asctime)s [%(process)d] [%(levelname)s] %(message)s",
+            datefmt="[%Y-%m-%d %H:%M:%S %z]",
+            level=logging.WARNING,
         )
         app = App("detroit-live" if name is None else name)
         script = self._events.into_script(host, port)

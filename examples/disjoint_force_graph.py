@@ -3,11 +3,13 @@
 #   / | \    This example is not working for now
 #  /  o  \
 # /_______\
-import detroit_live as d3live
-import detroit as d3
-from math import sqrt
-import requests
 import json
+from math import sqrt
+
+import detroit as d3
+import requests
+
+import detroit_live as d3live
 
 URL = "https://static.observableusercontent.com/files/e3680d5f766e85edde560c9c31a6dba2ddfcf2f66e1dced4afa18d8040f1f205e0bde1b8b234d866373f2bfc5806fafc47e244c5c9f48b60aaa1917c1b80fcb7?response-content-disposition=attachment%3Bfilename*%3DUTF-8%27%27graph.json"
 
@@ -75,10 +77,7 @@ def tick(simulation):
         .attr("x2", lambda d: d["target"]["x"])
         .attr("y2", lambda d: d["target"]["y"])
     )
-    (
-        node.attr("cx", lambda d: d["x"])
-        .attr("cy", lambda d: d["y"])
-    )
+    (node.attr("cx", lambda d: d["x"]).attr("cy", lambda d: d["y"]))
     print("TICK")
 
 

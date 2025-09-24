@@ -1,14 +1,16 @@
 from collections.abc import Callable
+from typing import TypeVar
+
 from detroit.force.simulation import ForceSimulation
 from detroit.types import SimulationNode
-from typing import TypeVar
+
 from ..dispatch import dispatch
 from ..timer import timer
 
 TLiveForceSimulation = TypeVar("LiveForceSimulation", bound="LiveForceSimulation")
 
-class LiveForceSimulation(ForceSimulation):
 
+class LiveForceSimulation(ForceSimulation):
     def __init__(self, nodes: list[SimulationNode]):
         super().__init__(nodes)
         self._event = dispatch("tick", "end")
@@ -52,7 +54,9 @@ class LiveForceSimulation(ForceSimulation):
         self._stepper.stop()
         return self
 
-    def on(self, typename: str, listener: Callable[[TLiveForceSimulation], None]) -> TLiveForceSimulation:
+    def on(
+        self, typename: str, listener: Callable[[TLiveForceSimulation], None]
+    ) -> TLiveForceSimulation:
         """
         Sets the event listener for the specified typenames and returns this
         simulation.
@@ -69,7 +73,7 @@ class LiveForceSimulation(ForceSimulation):
         Parameters
         ----------
         typename : str
-            
+
         listener : Callable[[LiveForceSimulation], None]
             Listener
 
@@ -88,6 +92,7 @@ class LiveForceSimulation(ForceSimulation):
         """
         self._event.on(typename, listener)
         return self
+
 
 def force_simulation(nodes: list[SimulationNode] | None = None) -> LiveForceSimulation:
     """

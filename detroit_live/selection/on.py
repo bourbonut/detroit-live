@@ -1,9 +1,11 @@
 from collections.abc import Callable
 from typing import Optional
+
 from detroit.types import T
 from lxml import etree
 
 from ..events import ContextListener, Event, EventListener, EventListeners
+
 
 def on_add(
     event_listeners: EventListeners,
@@ -30,11 +32,14 @@ def on_add(
                 target,
             )
         )
+
     return on
+
 
 def on_remove(
     event_listeners: EventListeners,
 ) -> Callable[[str, str, etree.Element], None]:
     def on(typename: str, name: str, node: etree.Element):
         event_listeners.remove_event_listener(typename, name, node)
+
     return on

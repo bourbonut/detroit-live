@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
+
 from .base import Event, Self
+
 
 def snake_to_camel(string: str) -> str:
     strings = string.split("_")
@@ -18,6 +20,7 @@ def json_format(cls: type[Self], prefix: str, mapping: dict[str, str]) -> str:
 
 def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
     return cls(*(content.get(snake_to_camel(attr)) for attr in cls.__annotations__))
+
 
 @dataclass
 class ChangeEvent(Event):
@@ -60,10 +63,14 @@ class WheelEvent(Event):
 
     @classmethod
     def json_format(cls: type[Self]) -> str:
-        return json_format(cls, "event", {
-            "rect_top": "srcElement.getBoundingClientRect().top",
-            "rect_left": "srcElement.getBoundingClientRect().left",
-        })
+        return json_format(
+            cls,
+            "event",
+            {
+                "rect_top": "srcElement.getBoundingClientRect().top",
+                "rect_left": "srcElement.getBoundingClientRect().left",
+            },
+        )
 
     @classmethod
     def from_json(cls: type[Self], content: dict[str, Any]) -> Self:
@@ -88,10 +95,14 @@ class MouseEvent(Event):
 
     @classmethod
     def json_format(cls: type[Self]) -> str:
-        return json_format(cls, "event", {
-            "rect_top": "srcElement.getBoundingClientRect().top",
-            "rect_left": "srcElement.getBoundingClientRect().left",
-        })
+        return json_format(
+            cls,
+            "event",
+            {
+                "rect_top": "srcElement.getBoundingClientRect().top",
+                "rect_left": "srcElement.getBoundingClientRect().left",
+            },
+        )
 
     @classmethod
     def from_json(cls: type[Self], content: dict[str, Any]) -> Self:

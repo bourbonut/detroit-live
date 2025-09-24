@@ -1,5 +1,6 @@
-from detroit_live.events import TrackingTree
 import detroit_live as d3
+from detroit_live.events import TrackingTree
+
 
 def test_tracking_tree_1():
     ttree = TrackingTree()

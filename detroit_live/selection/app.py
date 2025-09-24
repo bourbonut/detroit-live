@@ -11,7 +11,6 @@ from quart.utils import MustReloadError, observe_changes, restart
 
 
 class App(Quart):
-
     _host = None
     _port = None
 

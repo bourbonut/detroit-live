@@ -1,6 +1,9 @@
-from lxml import etree
 from collections.abc import Callable
+
+from lxml import etree
+
 from ..events import EventListeners
+
 
 def set_active(
     event_listeners: EventListeners,
@@ -10,4 +13,5 @@ def set_active(
         for listeners in event_listeners.values():
             for event_listener in listeners.search(node, typename, name):
                 event_listener.active = active
+
     return set_active_event

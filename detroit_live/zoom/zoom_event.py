@@ -1,8 +1,11 @@
-from lxml import etree
 from typing import Any
+
+from lxml import etree
+
 from ..dispatch import Dispatch
 from ..events import Event
 from .transform import Transform
+
 
 class ZoomEvent:
     """
@@ -21,6 +24,7 @@ class ZoomEvent:
     dispatch : Dispatch
         The dispatch listeners
     """
+
     def __init__(
         self,
         event_type: str,

@@ -1,8 +1,10 @@
 # https://observablehq.com/@d3/quadtree-findincircle
-import detroit_live as d3live
-import detroit as d3
 from math import hypot
 from random import random
+
+import detroit as d3
+
+import detroit_live as d3live
 
 style = """
 circle {
@@ -49,27 +51,38 @@ width = 928
 height = 500
 radius = 80
 
+
 def materialize(quadtree):
     rects = []
+
     def visit(node, x0, y0, x1, y1):
         rects.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "node": node})
+
     quadtree.visit(visit)
     return rects
+
 
 def find_in_circle(quadtree, x, y, radius, filter_func):
     result = []
     radius2 = radius * radius
     if filter_func:
+
         def accept(d):
             if filter_func(d):
                 result.append(d)
     else:
+
         def accept(d):
             result.append(d)
 
     def visit(node, x1, y1, x2, y2):
         if isinstance(node, list):
-            return x1 >= x + radius or y1 >= y + radius or x2 < x - radius or y2 < y - radius
+            return (
+                x1 >= x + radius
+                or y1 >= y + radius
+                or x2 < x - radius
+                or y2 < y - radius
+            )
         dx = quadtree.get_x()(node["data"]) - x
         dy = quadtree.get_y()(node["data"]) - y
         if dx * dx + dy * dy < radius2:
@@ -81,6 +94,7 @@ def find_in_circle(quadtree, x, y, radius, filter_func):
 
     quadtree.visit(visit)
     return result
+
 
 def find_in_circle_mark(quadtree, x, y, radius):
     result = []
@@ -95,7 +109,12 @@ def find_in_circle_mark(quadtree, x, y, radius):
             else:
                 node[4]["visited"] = True
 
-            return x1 >= x + radius or y1 >= y + radius or x2 < x - radius or y2 < y - radius
+            return (
+                x1 >= x + radius
+                or y1 >= y + radius
+                or x2 < x - radius
+                or y2 < y - radius
+            )
 
         while True:
             d = node["data"]
@@ -109,8 +128,15 @@ def find_in_circle_mark(quadtree, x, y, radius):
     quadtree.visit(visit)
     return result
 
+
 data = [{"x": random() * width, "y": random() * height} for _ in range(1000)]
-quadtree = d3.quadtree().x(lambda d: d["x"]).y(lambda d: d["y"]).set_extent([[-1, -1], [width + 1, height + 1]]).add_all(data)
+quadtree = (
+    d3.quadtree()
+    .x(lambda d: d["x"])
+    .y(lambda d: d["y"])
+    .set_extent([[-1, -1], [width + 1, height + 1]])
+    .add_all(data)
+)
 
 html = d3live.create("html")
 head = html.append("head").append("style").text(style)
@@ -153,6 +179,7 @@ point = (
     .attr("r", 2)
 )
 
+
 def quad_each(_, d):
     node = d["node"]
     if isinstance(node, list):
@@ -163,8 +190,10 @@ def quad_each(_, d):
     else:
         node["visited"] = False
 
+
 def point_each(_, d):
     d["visited"] = False
+
 
 def move(event, _, node):
     x, y = (200, 200) if event is None else d3live.pointer(event, node)
@@ -195,7 +224,9 @@ def move(event, _, node):
     circle.attr("cx", x).attr("cy", y)
 
 
-svg.on("mousemove click", move, extra_nodes=quad.nodes() + point.nodes() + circle.nodes()) # mousemove
+svg.on(
+    "mousemove click", move, extra_nodes=quad.nodes() + point.nodes() + circle.nodes()
+)  # mousemove
 move(None, None, None)
 
 html.create_app().run()

@@ -1,5 +1,13 @@
-from detroit_live.events.types import snake_to_camel, parse_event, ChangeEvent, MouseEvent, WheelEvent, WindowSizeEvent
 import pytest
+
+from detroit_live.events.types import (
+    ChangeEvent,
+    MouseEvent,
+    WheelEvent,
+    WindowSizeEvent,
+    parse_event,
+    snake_to_camel,
+)
 
 
 def test_json_format_1():
@@ -13,8 +21,8 @@ def test_json_format_1():
 
 def test_json_format_2():
     assert (
-        WheelEvent.json_format() ==
-        "{type: 'WheelEvent', clientX: event.clientX, clientY: event.clientY,"
+        WheelEvent.json_format()
+        == "{type: 'WheelEvent', clientX: event.clientX, clientY: event.clientY,"
         " deltaX: event.deltaX, deltaY: event.deltaY, deltaMode: event.deltaMode,"
         " ctrlKey: event.ctrlKey, button: event.button, rectTop: "
         "event.srcElement.getBoundingClientRect().top, rectLeft: "
@@ -29,7 +37,7 @@ def test_json_format_2():
         "ctrlKey": True,
         "button": 2,
         "rectTop": 50,
-        "rectLeft": 75
+        "rectLeft": 75,
     }
 
     expected = WheelEvent(
@@ -41,7 +49,7 @@ def test_json_format_2():
         ctrl_key=True,
         button=2,
         rect_top=50,
-        rect_left=75
+        rect_left=75,
     )
     assert WheelEvent.from_json(json) == expected
 
@@ -68,7 +76,7 @@ def test_json_format_3():
         "altKey": True,
         "elementId": "svg",
         "rectTop": 75,
-        "rectLeft": 100
+        "rectLeft": 100,
     }
     expected = MouseEvent(
         x=150,
@@ -83,24 +91,29 @@ def test_json_format_3():
         alt_key=True,
         element_id="svg",
         rect_top=75,
-        rect_left=100
+        rect_left=100,
     )
     assert MouseEvent.from_json(json) == expected
 
+
 def test_json_format_4():
-    assert ChangeEvent.json_format() == "{value: e.srcElement.value, type: 'ChangeEvent'}"
+    assert (
+        ChangeEvent.json_format() == "{value: e.srcElement.value, type: 'ChangeEvent'}"
+    )
 
     assert ChangeEvent.from_json({"value": "hello"}) == ChangeEvent("hello")
+
 
 @pytest.mark.parametrize(
     "value, expected",
     [
         ["client_x", "clientX"],
         ["point_from_element", "pointFromElement"],
-    ]
+    ],
 )
 def test_snake_to_camel(value, expected):
     assert snake_to_camel(value) == expected
+
 
 @pytest.mark.parametrize(
     "typename, expected",
@@ -112,7 +125,7 @@ def test_snake_to_camel(value, expected):
         ["wheel", WheelEvent],
         ["mouseover", MouseEvent],
         ["foo", MouseEvent],
-    ]
+    ],
 )
 def test_parse_event(typename, expected):
     assert parse_event(typename) == expected

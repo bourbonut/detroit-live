@@ -1,18 +1,20 @@
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import Any, Optional, TypeVar
 
 from lxml import etree
-from .tracking_tree import TrackingTree
+
 from .base import Event
 from .context_listener import ContextListener
-from .types import parse_event
 from .headers import headers
+from .tracking_tree import TrackingTree
+from .types import parse_event
 from .utils import search, xpath_to_query_selector
 
 T = TypeVar("T")
 
 log = logging.getLogger(__name__)
+
 
 def parse_target(
     target: str | None = None,
@@ -60,16 +62,9 @@ class EventListener:
         node: Optional[etree.Element] = None,
     ) -> bool:
         if node is None:
-            return (
-                self.typename == typename and
-                self.name == name
-            )
+            return self.typename == typename and self.name == name
         else:
-            return (
-                self.typename == typename and
-                self.name == name and
-                self.node == node
-            )
+            return self.typename == typename and self.name == name and self.node == node
 
     def into_script(self, event_json: str) -> str:
         typename = repr(self.typename)
@@ -83,13 +78,19 @@ class EventListenersGroup:
     def __init__(self, typename: str):
         self.event: type[Event] = parse_event(typename)
         self.event_type: str = self.event.__name__
-        self._event_listeners: dict[etree.Element, dict[str, dict[str, EventListener]]] = {}
+        self._event_listeners: dict[
+            etree.Element, dict[str, dict[str, EventListener]]
+        ] = {}
         self._previous_node = None
         self._mousedowned_node = None
 
-    def __setitem__(self, key: tuple[etree.Element, str, str], event_listener: EventListener):
+    def __setitem__(
+        self, key: tuple[etree.Element, str, str], event_listener: EventListener
+    ):
         node, typename, name = key
-        (self._event_listeners.setdefault(typename, {}).setdefault(node, {})[name]) = event_listener
+        (
+            self._event_listeners.setdefault(typename, {}).setdefault(node, {})[name]
+        ) = event_listener
 
     def get(self, key: tuple[etree.Element, str, str]) -> EventListener | None:
         node, typename, name = key
@@ -97,7 +98,9 @@ class EventListenersGroup:
             if by_names := by_nodes.get(node):
                 return by_names.get(name)
 
-    def pop(self, key: tuple[etree.Element, str, str], default: Any = None) -> EventListener | Any:
+    def pop(
+        self, key: tuple[etree.Element, str, str], default: Any = None
+    ) -> EventListener | Any:
         node, typename, name = key
         if by_nodes := self._event_listeners.get(typename):
             if by_names := by_nodes.get(node):
@@ -114,7 +117,9 @@ class EventListenersGroup:
 
     def filter_by(self, event: Event, event_typename: str) -> list[EventListener]:
         ttree = TrackingTree()
-        if hasattr(event, "element_id"): # MouseEvent and events with attribute 'element_id'
+        if hasattr(
+            event, "element_id"
+        ):  # MouseEvent and events with attribute 'element_id'
             element_id = event.element_id
             next_node = ttree.get_node(element_id)
             if next_node is None and self._mousedowned_node is None:
@@ -125,20 +130,21 @@ class EventListenersGroup:
             # `mousedowned_node` is the node that the mouse is currently "holding"
             match event_typename:
                 case "mouseover":
-                    event_listeners = (
-                        self.search(self._previous_node, "mouseleave") +
-                        self.search(next_node, event_typename)
-                    )
+                    event_listeners = self.search(
+                        self._previous_node, "mouseleave"
+                    ) + self.search(next_node, event_typename)
                     self._previous_node = next_node
                     return event_listeners
                 case "mousedown":
                     self._mousedowned_node = next_node
 
-            target = next_node if self._mousedowned_node is None else self._mousedowned_node
+            target = (
+                next_node if self._mousedowned_node is None else self._mousedowned_node
+            )
             if event_typename == "mouseup":
                 self._mousedowned_node = None
             return self.search(target, event_typename)
-        else: # Other event types
+        else:  # Other event types
             return self.search(typename=event_typename)
 
     def propagate(self, event: dict[str, Any]):
@@ -174,6 +180,7 @@ class EventListenersGroup:
                 for event_listener in self.search()
             )
 
+
 class EventListeners:
     def __init__(self):
         self._event_listeners: dict[str, EventListenersGroup] = {}
@@ -195,11 +202,9 @@ class EventListeners:
     def add_event_listener(self, target: EventListener):
         key = (target.node, target.typename, target.name)
         event_type = parse_event(target.typename).__name__
-        event_listeners_group = (
-            self._event_listeners.setdefault(
-                event_type,
-                EventListenersGroup(target.typename),
-            )
+        event_listeners_group = self._event_listeners.setdefault(
+            event_type,
+            EventListenersGroup(target.typename),
         )
         event_listeners_group[key] = target
 

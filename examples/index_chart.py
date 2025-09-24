@@ -5,8 +5,9 @@ from operator import iadd, itemgetter
 from pathlib import Path
 
 import detroit as d3
-import detroit_live as d3live
 import polars as pl
+
+import detroit_live as d3live
 
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
 URLS = {
@@ -40,7 +41,7 @@ data = [
     df.select(
         pl.col("Date").str.to_datetime("%Y-%m-%d"),
         pl.all().exclude("Date"),
-        pl.lit(name).alias("Symbol")
+        pl.lit(name).alias("Symbol"),
     )
     for name, df in load_data().items()
 ]
@@ -127,17 +128,8 @@ svg = (
 )
 
 min_date = min(map(itemgetter("Date"), stocks))
-rule = (
-    svg.append("g")
-    .attr("transform", f"translate({x(min_date) + 0.5}, 0)")
-)
-(
-    rule
-    .append("line")
-    .attr("y1", height)
-    .attr("y2", 0)
-    .attr("stroke", "black")
-)
+rule = svg.append("g").attr("transform", f"translate({x(min_date) + 0.5}, 0)")
+(rule.append("line").attr("y1", height).attr("y2", 0).attr("stroke", "black"))
 
 # Create a line and a label for each series.
 serie = (
@@ -172,6 +164,7 @@ line = d3.line().x(lambda d: x(d["Date"])).y(lambda d: y(d["value"]))
     .text(lambda d: d["key"])
 )
 
+
 # When the user mouses over the chart, update it according to the date that is
 # referenced by the horizontal position of the pointer.
 def transform(values, date):
@@ -181,7 +174,7 @@ def transform(values, date):
     # this efficiently, it uses a bisector:
     # bisect = d3.bisector(lambda d: d.Date).left
     i = bisect_left(list(map(itemgetter("Date"), values)), date, 0, len(values) - 1)
-    return f"translate(0,{y(1) - y(values[i]["value"] / values[0]["value"])})"
+    return f"translate(0,{y(1) - y(values[i]['value'] / values[0]['value'])})"
 
 
 def mouvemove(event, d, node):
@@ -190,6 +183,11 @@ def mouvemove(event, d, node):
     serie.attr("transform", lambda values: transform(values, date))
     svg.attr("value", date)
 
-svg.on("mousemove touchmove", mouvemove, extra_nodes=rule.nodes() + serie.nodes() + svg.nodes())
+
+svg.on(
+    "mousemove touchmove",
+    mouvemove,
+    extra_nodes=rule.nodes() + serie.nodes() + svg.nodes(),
+)
 
 svg.create_app().run()

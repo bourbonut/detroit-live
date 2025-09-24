@@ -1,9 +1,10 @@
 from collections.abc import Callable
-from lxml import etree
 from typing import Generic, Optional, TypeVar
 
-from .tracking_tree import TrackingTree
+from lxml import etree
+
 from .base import Event
+from .tracking_tree import TrackingTree
 from .utils import (
     diffdict,
     node_attribs,
@@ -12,7 +13,8 @@ from .utils import (
 
 T = TypeVar("T")
 
-EMPTY_DIFF = {'remove': [], 'change': []}
+EMPTY_DIFF = {"remove": [], "change": []}
+
 
 class ContextListener(Generic[T]):
     def __init__(
@@ -29,7 +31,10 @@ class ContextListener(Generic[T]):
 
     def __call__(self, event: Event):
         ttree = TrackingTree()
-        states = [(node, node_attribs(node, node in self._html_nodes)) for node in self._updated_nodes]
+        states = [
+            (node, node_attribs(node, node in self._html_nodes))
+            for node in self._updated_nodes
+        ]
 
         node = self.get_node()
         self._listener(event, self._data_accessor(node), node)
@@ -42,7 +47,7 @@ class ContextListener(Generic[T]):
                 yield {"elementId": element_id, "diff": diff}
 
     def get_listener(
-        self
+        self,
     ) -> Callable[[Event, T | None, Optional[etree.Element]], None]:
         return self._listener
 

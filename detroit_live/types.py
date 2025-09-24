@@ -1,6 +1,7 @@
-from lxml import etree
 from collections.abc import Callable
 from typing import TypeAlias, TypeVar
+
+from lxml import etree
 
 T = TypeVar("T")
 U = TypeVar("U")

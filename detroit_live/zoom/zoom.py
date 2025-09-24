@@ -1,36 +1,44 @@
-from collections.abc import Callable
-from detroit.types import Accessor, EtreeFunction
-from detroit.interpolate import interpolate_zoom
-from lxml import etree
 import warnings
-from math import hypot, sqrt, inf, nan
+from collections.abc import Callable
+from math import hypot, inf, nan, sqrt
 from typing import TypeVar
-from ..events import pointer, MouseEvent, WheelEvent, Event
-from ..selection import select, LiveSelection
-from ..types import T, Extent, EventFunction
+
+from detroit.interpolate import interpolate_zoom
+from detroit.types import Accessor, EtreeFunction
+from lxml import etree
+
 from ..dispatch import Dispatch, dispatch
-from .transform import Transform, identity
-from .zoom_state import _zoom_state
-from .zoom_event import ZoomEvent
+from ..events import Event, MouseEvent, WheelEvent, pointer
+from ..selection import LiveSelection, select
+from ..types import EventFunction, Extent, T
 from .noevent import noevent
+from .transform import Transform, identity
+from .zoom_event import ZoomEvent
+from .zoom_state import _zoom_state
 
 TGesture = TypeVar("Gesture", bound="Gesture")
 TZoom = TypeVar("Zoom", bound="Zoom")
 
+
 def constant(x):
     def f(*args):
         return x
+
     return f
 
-def default_filter(event: MouseEvent | WheelEvent, d: T | None, node: etree.Element) -> bool:
+
+def default_filter(
+    event: MouseEvent | WheelEvent, d: T | None, node: etree.Element
+) -> bool:
     return (not event.ctrl_key or isinstance(event, WheelEvent)) and not event.button
+
 
 def default_extent(node: etree.Element) -> Extent:
     if node.tag == "svg":
         attrib = dict(node.attrib)
         if view_box := attrib.get("viewBox"):
             values = list(map(float, view_box.split(", ")))
-            if len(values) == 4: # valid viewBox
+            if len(values) == 4:  # valid viewBox
                 x, y, width, height = values
                 return [[x, y], [width, height]]
             warnings.warn(
@@ -45,8 +53,10 @@ def default_extent(node: etree.Element) -> Extent:
     # Default arbitrary values
     return [[0, 0], [928, 500]]
 
+
 def default_transform(node: etree.Element) -> Transform:
     _zoom_state.set_zoom(node, _zoom_state.get_zoom(node) or identity)
+
 
 def default_wheel_delta(event: WheelEvent) -> float:
     k = 0.002
@@ -56,6 +66,7 @@ def default_wheel_delta(event: WheelEvent) -> float:
         k = 1
     return -event.delta_y * k * (10 if event.ctrl_key else 1)
 
+
 def default_touchable(selection: LiveSelection) -> Accessor[T, bool]:
     def touchable(d: T, i: int, group: list[etree.Element]) -> bool:
         target = group[i]
@@ -63,9 +74,13 @@ def default_touchable(selection: LiveSelection) -> Accessor[T, bool]:
             if len(event_listener.search(target, "touchstart")):
                 return True
         return False
+
     return touchable
 
-def default_constrain(transform: Transform, extent: Extent, translate_extent: Extent) -> Transform:
+
+def default_constrain(
+    transform: Transform, extent: Extent, translate_extent: Extent
+) -> Transform:
     dx0 = transform.invert_x(extent[0][0]) - translate_extent[0][0]
     dx1 = transform.invert_x(extent[1][0]) - translate_extent[1][0]
     dy0 = transform.invert_x(extent[0][1]) - translate_extent[0][1]
@@ -75,11 +90,12 @@ def default_constrain(transform: Transform, extent: Extent, translate_extent: Ex
         (dy0 + dy1) * 0.5 if dy1 > dy0 else min(0, dy0) or max(0, dy1),
     )
 
+
 def centroid(extent: Extent) -> tuple[float, float]:
     return [(extent[0][0] + extent[1][0]) * 0.5, (extent[0][1] + extent[1][1]) * 0.5]
 
-class Gesture:
 
+class Gesture:
     _shared = _zoom_state
 
     def __init__(
@@ -149,6 +165,7 @@ class Gesture:
             self._node,
         )
 
+
 class Zoom:
     """
     Creates a new zoom behavior. The returned behavior, zoom, is both an object
@@ -202,16 +219,29 @@ class Zoom:
         """
         selection.each(default_transform)
         (
-            selection
-            .on("wheel.zoom", self._wheeled, extra_nodes=self._extra_nodes)
+            selection.on("wheel.zoom", self._wheeled, extra_nodes=self._extra_nodes)
             .on("mousedown.zoom", self._mouse_downed, extra_nodes=self._extra_nodes)
-            .on("mousemove.zoom", self._mouse_moved, extra_nodes=self._extra_nodes, active=False)
-            .on("mouseup.zoom", self._mouse_upped, extra_nodes=self._extra_nodes, active=False)
+            .on(
+                "mousemove.zoom",
+                self._mouse_moved,
+                extra_nodes=self._extra_nodes,
+                active=False,
+            )
+            .on(
+                "mouseup.zoom",
+                self._mouse_upped,
+                extra_nodes=self._extra_nodes,
+                active=False,
+            )
             .on("dblclick.zoom", self._dbl_clicked, extra_nodes=self._extra_nodes)
             .filter(self._touchable)
             .on("touchstart.zoom", self._touch_started, extra_nodes=self._extra_nodes)
             .on("touchmove.zoom", self._touch_moved, extra_nodes=self._extra_nodes)
-            .on("touchend.zoom touchcancel.zoom", self._touch_ended, extra_nodes=self._extra_nodes)
+            .on(
+                "touchend.zoom touchcancel.zoom",
+                self._touch_ended,
+                extra_nodes=self._extra_nodes,
+            )
             .style("-webkit-tap-highlight-color", "rgba(0,0,0,0)")
         )
 
@@ -238,19 +268,30 @@ class Zoom:
         event : Event
             Event
         """
-        selection = collection.selection() if hasattr(collection, "selection") else collection
+        selection = (
+            collection.selection() if hasattr(collection, "selection") else collection
+        )
         selection.each(default_transform)
         if collection != selection:
             self._schedule(collection, transform, point, event)
         else:
-            def each_func(node: etree.Element, d: T, i: int, group: list[etree.Element]):
+
+            def each_func(
+                node: etree.Element, d: T, i: int, group: list[etree.Element]
+            ):
                 (
                     self._gesture(node)
                     .event(event)
                     .start()
-                    .zoom(None, transform if isinstance(transform, Transform) else transform(node, d, i, group))
+                    .zoom(
+                        None,
+                        transform
+                        if isinstance(transform, Transform)
+                        else transform(node, d, i, group),
+                    )
                     .end()
                 )
+
             # selection.interrupt
             selection.each(each_func)
 
@@ -286,15 +327,14 @@ class Zoom:
         event : Event
             Event
         """
+
         def kfunc(
-            node: etree.Element,
-            d: T,
-            i: int,
-            group: list[etree.Element]
+            node: etree.Element, d: T, i: int, group: list[etree.Element]
         ) -> float:
             k0 = self._shared.get_zoom(node).k
             k1 = k(node, d, i, group) if callable(k) else k
             return k0 * k1
+
         self.scale_to(selection, kfunc, p, event)
 
     def scale_to(
@@ -329,6 +369,7 @@ class Zoom:
         event : Event
             Event
         """
+
         def transform(
             node: etree.Element,
             d: T,
@@ -344,7 +385,10 @@ class Zoom:
                 p0 = p(node, d, i, group)
             p1 = t0.invert(p0)
             k1 = k(node, d, i, group) if callable(k) else k
-            return self._constrain(self._translate(self._scale(t0, k1), p0, p1), e, self._translate_extent)
+            return self._constrain(
+                self._translate(self._scale(t0, k1), p0, p1), e, self._translate_extent
+            )
+
         self.transform(selection, transform, p, event)
 
     def transform_by(
@@ -379,6 +423,7 @@ class Zoom:
         event : Event
             Event
         """
+
         def transform(
             node: etree.Element,
             d: T,
@@ -393,6 +438,7 @@ class Zoom:
                 self._extent(node),
                 self._translate_extent,
             )
+
         self.transform(selection, transform, None, event)
 
     def translate_to(
@@ -430,6 +476,7 @@ class Zoom:
         event : Event
             Event
         """
+
         def transform(
             node: etree.Element,
             d: T,
@@ -443,10 +490,17 @@ class Zoom:
                 p0 = centroid(e)
             elif callable(p):
                 p0 = p(node, d, i, group)
-            return self._constrain(identity.translate(p0[0], p0[1]).scale(t.k).translate(
-                -x(node, d, i, group) if callable(x) else -x,
-                -y(node, d, i, group) if callable(y) else -y,
-            ), e, self._translate_extent)
+            return self._constrain(
+                identity.translate(p0[0], p0[1])
+                .scale(t.k)
+                .translate(
+                    -x(node, d, i, group) if callable(x) else -x,
+                    -y(node, d, i, group) if callable(y) else -y,
+                ),
+                e,
+                self._translate_extent,
+            )
+
         self.transform(selection, transform, p, event)
 
     def _scale(
@@ -473,19 +527,12 @@ class Zoom:
         else:
             return Transform(transform.k, x, y)
 
-
     def _schedule(transition, transform, point, event):
         # TODO
         pass
 
-    def _gesture(
-        self,
-        node: etree.Element,
-        clean: bool = False
-    ) -> Gesture:
-        return (
-            None if clean else self._shared.get_zooming(node)
-        ) or Gesture(
+    def _gesture(self, node: etree.Element, clean: bool = False) -> Gesture:
+        return (None if clean else self._shared.get_zooming(node)) or Gesture(
             self,
             node,
             self._extent,
@@ -497,7 +544,10 @@ class Zoom:
             return
         g = self._gesture(node).event(event)
         t = self._shared.get_zoom(node)
-        k = max(self._scale_extent[0], min(self._scale_extent[1], t.k * pow(2, self._wheel_delta(event))))
+        k = max(
+            self._scale_extent[0],
+            min(self._scale_extent[1], t.k * pow(2, self._wheel_delta(event))),
+        )
         p = pointer(event)
 
         if g.wheel:
@@ -526,7 +576,7 @@ class Zoom:
                     g.mouse[1],
                 ),
                 g.extent,
-                self._translate_extent
+                self._translate_extent,
             ),
         )
 
@@ -534,10 +584,7 @@ class Zoom:
         if self._touch_ending or not self._filter(event, d, node):
             return
         self._g = g = self._gesture(node, clean=True).event(event)
-        self._v = (
-            select(node)
-            .set_event("mousemove.zoom mouseup.zoom", True)
-        )
+        self._v = select(node).set_event("mousemove.zoom mouseup.zoom", True)
         p = pointer(event)
         self._x0 = event.client_x
         self._y0 = event.client_y
@@ -558,14 +605,10 @@ class Zoom:
         g.event(event).zoom(
             "mouse",
             self._constrain(
-                self._translate(
-                    self._shared.get_zoom(g._node),
-                    g.mouse[0],
-                    g.mouse[1]
-                ),
+                self._translate(self._shared.get_zoom(g._node), g.mouse[0], g.mouse[1]),
                 g.extent,
                 self._translate_extent,
-            )
+            ),
         )
 
     def _mouse_upped(self, event: MouseEvent, d: T | None, node: etree.Element):
@@ -579,10 +622,16 @@ class Zoom:
         if not self._filter(event, d, node):
             return
         t0 = self._shared.get_zoom(node)
-        p0 = pointer(event.changed_touches[0] if hasattr(event, "changed_touches") else event)
+        p0 = pointer(
+            event.changed_touches[0] if hasattr(event, "changed_touches") else event
+        )
         p1 = t0.invert(p0)
         k1 = t0.k * (0.5 if event.shift_key else 2)
-        t1 = self._constrain(self._translate(self._scale(t0, k1), p0, p1), self._extent(node), self._translate_extent)
+        t1 = self._constrain(
+            self._translate(self._scale(t0, k1), p0, p1),
+            self._extent(node),
+            self._translate_extent,
+        )
 
         noevent(event, d, node)
         # Transition not supported for the moment
@@ -658,11 +707,7 @@ class Zoom:
 
         g.zoom(
             "touch",
-            self._constrain(
-                self._translate(t, p, l),
-                g.extent,
-                self._translate_extent
-            )
+            self._constrain(self._translate(t, p, l), g.extent, self._translate_extent),
         )
 
     def _touch_ended(self, event: Event, d: T | None, node: etree.Element):
@@ -691,7 +736,10 @@ class Zoom:
             g.end()
             if g.taps == 2:
                 t = pointer(touches[-1])
-                if hypot(self._touch_first[0] - t[0], self._touch_first[1] - t[1]) < self._tap_distance:
+                if (
+                    hypot(self._touch_first[0] - t[0], self._touch_first[1] - t[1])
+                    < self._tap_distance
+                ):
                     p = select(node).on("dblclick.zoom")
                     if p:
                         p(event, d, node)
@@ -787,7 +835,8 @@ class Zoom:
 
     def set_touchable(
         self,
-        touchable: Callable[[LiveSelection], EventFunction[T | None, bool]] | Callable[..., bool]
+        touchable: Callable[[LiveSelection], EventFunction[T | None, bool]]
+        | Callable[..., bool],
     ) -> TZoom:
         """
         Sets the touch support detector to the specified function and returns
@@ -814,10 +863,12 @@ class Zoom:
         if callable(touchable(None)):
             self._touchable = touchable
         else:
+
             def lambda_touchable(
                 selection: LiveSelection,
             ) -> EventFunction[T | None, bool]:
                 return constant(touchable(selection))
+
             self._touchable = lambda_touchable
         return self
 
@@ -907,7 +958,9 @@ class Zoom:
         self._translate_extent[1][1] = translate_extent[1][1]
         return self
 
-    def set_constrain(self, constrain: Callable[[Transform, Extent, Extent], Transform]) -> TZoom:
+    def set_constrain(
+        self, constrain: Callable[[Transform, Extent, Extent], Transform]
+    ) -> TZoom:
         """
         Sets the transform constraint function to the specified function and
         returns the zoom behavior.
@@ -948,7 +1001,9 @@ class Zoom:
         self._duration = duration
         return self
 
-    def set_interpolate(self, interpolation: Callable[[float, float], Callable[[float], float]]) -> TZoom:
+    def set_interpolate(
+        self, interpolation: Callable[[float, float], Callable[[float], float]]
+    ) -> TZoom:
         """
         Sets the interpolation factory for zoom transitions to the specified
         function.
@@ -1024,7 +1079,7 @@ class Zoom:
     def get_translate_extent(self) -> tuple[float, float]:
         return [
             [self._translate_extent[0][0], self._translate_extent[0][1]],
-            [self._translate_extent[1][0], self._translate_extent[1][1]]
+            [self._translate_extent[1][0], self._translate_extent[1][1]],
         ]
 
     def get_constrain(self) -> Callable[[Transform, Extent, Extent], Transform]:

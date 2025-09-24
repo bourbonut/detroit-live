@@ -1,5 +1,7 @@
 from collections.abc import Callable
+
 from .timer import Timer
+
 
 def timeout(
     callback: Callable[[float], None],

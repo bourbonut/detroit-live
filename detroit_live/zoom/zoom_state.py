@@ -1,13 +1,15 @@
-from lxml import etree
 from typing import TypeVar
+
+from lxml import etree
+
 from .transform import Transform
 
 Gesture = TypeVar("Gesture", bound="Gesture")
 
-class ZoomState:
 
+class ZoomState:
     def __init__(self):
-        self.__zoom  = {}
+        self.__zoom = {}
         self.__zooming = {}
 
     def set_zoom(self, node: etree.Element, transform: Transform):
@@ -27,5 +29,6 @@ class ZoomState:
 
     def remove_zooming(self, node: etree.Element):
         self.__zooming.pop(node, None)
+
 
 _zoom_state = ZoomState()

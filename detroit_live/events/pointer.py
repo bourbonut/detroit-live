@@ -1,12 +1,17 @@
-from lxml import etree
 import re
-from typing import Optional
-from .types import MouseEvent, WheelEvent
 import warnings
+from typing import Optional
+
+from lxml import etree
+
+from .types import MouseEvent, WheelEvent
 
 TRANSFORM_PATTERN = re.compile(r"(translate|scale)\(([^)]+)\)")
 
-def pointer(event: MouseEvent | WheelEvent, node: Optional[etree.Element] = None) -> tuple[float, float]:
+
+def pointer(
+    event: MouseEvent | WheelEvent, node: Optional[etree.Element] = None
+) -> tuple[float, float]:
     tx = 0
     ty = 0
     k = 1

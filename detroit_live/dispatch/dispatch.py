@@ -1,5 +1,5 @@
-from collections.abc import Callable, Iterator
 import re
+from collections.abc import Callable, Iterator
 from copy import deepcopy
 from typing import Any, TypeAlias, TypeVar
 
@@ -9,20 +9,23 @@ TDispatch = TypeVar("Dispatch", bound="Dispatch")
 
 TYPENAME_PATTERN = re.compile(r"^|\s+")
 
+
 def parse_typenames(typenames: str) -> Iterator[tuple[str, str]]:
     for typename in TYPENAME_PATTERN.split(typenames.strip())[1:]:
         name = ""
         if "." in typename:
             i = typename.index(".")
             if i >= 0:
-                name = typename[i + 1:]
+                name = typename[i + 1 :]
                 typename = typename[0:i]
         yield (typename, name)
+
 
 def get_type(callbacks: list[NamedCallback], refname: str) -> Callback | None:
     for name, callback in callbacks:
         if name == refname:
             return callback
+
 
 def update_callbacks(callbacks: list[NamedCallback], refname: str, callback: Callback):
     for i, (name, _) in enumerate(callbacks):
@@ -31,6 +34,7 @@ def update_callbacks(callbacks: list[NamedCallback], refname: str, callback: Cal
             break
     if callback is not None:
         callbacks.append((refname, callback))
+
 
 class Dispatch:
     def __init__(self, typenames: dict[list[NamedCallback]]):

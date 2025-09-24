@@ -1,29 +1,38 @@
-from lxml import etree
 from collections.abc import Callable
+from typing import TypeVar
+
 from detroit.array import argpass
 from detroit.types import Accessor
-from typing import TypeVar
-from .drag_event import DragEvent
-from .noevent import noevent
+from lxml import etree
+
 from ..dispatch import Dispatch, dispatch
-from ..events import MouseEvent, Event, pointer
+from ..events import Event, MouseEvent, pointer
 from ..selection import LiveSelection, select
 from ..types import EventFunction, T
+from .drag_event import DragEvent
+from .noevent import noevent
 
 TDrag = TypeVar("Drag", bound="Drag")
+
 
 def constant(x):
     def f(*args):
         return x
 
+
 def default_filter(event: MouseEvent, d: T | None, node: etree.Element) -> bool:
     return not event.ctrl_key and not event.button
+
 
 def default_subject(event: DragEvent, d: T | None) -> T | dict[str, float]:
     return {"x": event.x, "y": event.y} if d is None else d
 
-def default_container(event: MouseEvent, d: T | None, node: etree.Element) -> etree.Element:
+
+def default_container(
+    event: MouseEvent, d: T | None, node: etree.Element
+) -> etree.Element:
     return node.getparent()
+
 
 def default_touchable(selection: LiveSelection) -> Accessor[T, bool]:
     def touchable(d: T, i: int, group: list[etree.Element]) -> bool:
@@ -32,10 +41,11 @@ def default_touchable(selection: LiveSelection) -> Accessor[T, bool]:
             if len(event_listener.search(target, "touchstart")):
                 return True
         return False
+
     return touchable
 
-class Gesture:
 
+class Gesture:
     def __init__(
         self,
         drag: TDrag,
@@ -45,7 +55,7 @@ class Gesture:
         identifier: str,
         dispatch: Dispatch,
         subject: T | dict[str, float],
-        p: tuple[float, float]
+        p: tuple[float, float],
     ):
         self._drag = drag
         self._event = event
@@ -99,6 +109,7 @@ class Drag:
     extra_nodes: list[etree.Element] | None
         Extra nodes to update when the listener is called
     """
+
     def __init__(self, extra_nodes: list[etree.Element] | None = None):
         self._extra_nodes = extra_nodes
         self._filter = argpass(default_filter)
@@ -127,8 +138,7 @@ class Drag:
             Selection
         """
         (
-            selection
-            .on("mousedown.drag", self._mouse_downed, self._extra_nodes)
+            selection.on("mousedown.drag", self._mouse_downed, self._extra_nodes)
             .on("mousemove.drag", self._mouse_moved, self._extra_nodes, active=False)
             .on("dragstart.drag", noevent, self._extra_nodes, active=False)
             .on("mouseup.drag", self._mouse_upped, self._extra_nodes, active=False)
@@ -146,7 +156,7 @@ class Drag:
         event: MouseEvent,
         gesture: Callable[[str, MouseEvent, Event | None], None],
         identifier: str,
-        touch: Event | None = None
+        touch: Event | None = None,
     ):
         p = None
         n = 0
@@ -177,28 +187,34 @@ class Drag:
         dispatch = self._listeners.copy()
         self._container_element = container
         p = pointer(touch or event, container)
-        subject = self._subject(DragEvent(
-            event_type="beforestart",
-            source_event=event,
-            subject=None,
-            target=self,
-            identifier=identifier,
-            active=self._active,
-            x=p[0],
-            y=p[1],
-            dx=0,
-            dy=0,
-            dispatch=dispatch,
-        ), d)
+        subject = self._subject(
+            DragEvent(
+                event_type="beforestart",
+                source_event=event,
+                subject=None,
+                target=self,
+                identifier=identifier,
+                active=self._active,
+                x=p[0],
+                y=p[1],
+                dx=0,
+                dy=0,
+                dispatch=dispatch,
+            ),
+            d,
+        )
         return (
-            None if subject is None
+            None
+            if subject is None
             else Gesture(self, event, d, node, identifier, dispatch, subject, p)
         )
 
     def _mouse_downed(self, event: MouseEvent, d: T | None, node: etree.Element):
         if self._touch_ending or not self._filter(event, d, node):
             return
-        gesture = self._before_start(self._container(event, d, node), event, d, node, "mouse")
+        gesture = self._before_start(
+            self._container(event, d, node), event, d, node, "mouse"
+        )
         if gesture is None:
             return
         select(node).set_event("mousemove.drag mouseup.drag dragstart.drag", True)
@@ -221,14 +237,16 @@ class Drag:
     def _touch_started(self, event: MouseEvent, d: T | None, node: etree.Element):
         if not self._filter(event, d, node):
             return
-        touches = event.changed_touches # touch event ?
+        touches = event.changed_touches  # touch event ?
         c = self._container(event, d, node)
         for touch in touches:
-            if gesture := self._before_start(c, event, d, node, touch["identifier"], touch):
+            if gesture := self._before_start(
+                c, event, d, node, touch["identifier"], touch
+            ):
                 gesture("start", event, touch)
 
     def _touch_moved(self, event: MouseEvent, d: T | None, node: etree.Element):
-        touches = event.changed_touches # touch event ?
+        touches = event.changed_touches  # touch event ?
         for touch in touches:
             if gesture := self._gestures.get(touch["identifier"]):
                 gesture("drag", event, touch)
@@ -270,7 +288,9 @@ class Drag:
             self._filter = constant(filter_func)
         return self
 
-    def set_subject(self, subject: EventFunction[T | None, T | dict[str, float]]) -> TDrag:
+    def set_subject(
+        self, subject: EventFunction[T | None, T | dict[str, float]]
+    ) -> TDrag:
         """
         Sets the subject accessor to the specified object or function and
         returns the drag behavior.
@@ -297,10 +317,12 @@ class Drag:
             self._subject = constant(subject)
         return self
 
-    def set_touchable(self, touchable: Callable[[LiveSelection], EventFunction[T | None, bool]]) -> TDrag:
+    def set_touchable(
+        self, touchable: Callable[[LiveSelection], EventFunction[T | None, bool]]
+    ) -> TDrag:
         """
         Sets the touch support detector to the specified function and returns
-        the drag behavior. 
+        the drag behavior.
 
         Parameters
         ----------

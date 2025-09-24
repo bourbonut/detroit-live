@@ -1,7 +1,8 @@
-from collections.abc import Callable
 import time
+from collections.abc import Callable
 
-FRAME_TIME = 0.017 # 504 * 1e-6
+FRAME_TIME = 0.017  # 504 * 1e-6
+
 
 def now() -> float:
     """
@@ -21,8 +22,8 @@ def now() -> float:
     """
     return time.perf_counter()
 
-class Timer:
 
+class Timer:
     def __init__(self):
         self._start = now()
         self._stop = False
@@ -49,6 +50,7 @@ class Timer:
 
     def stop(self):
         self._stop = True
+
 
 def timer(
     callback: Callable[[float, Callable[[None], None]], None],

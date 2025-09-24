@@ -1,10 +1,13 @@
-from lxml import etree
 from collections.abc import Callable
 from typing import Any, TypeVar
+
+from lxml import etree
+
 from ..dispatch import Dispatch
 from ..events import Event
 
 TDragEvent = TypeVar("DragEvent", bound="DragEvent")
+
 
 class DragEvent:
     """
@@ -36,6 +39,7 @@ class DragEvent:
     dispatch : Dispatch
         The dispatch listeners
     """
+
     def __init__(
         self,
         event_type: str,
