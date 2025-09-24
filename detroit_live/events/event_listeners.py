@@ -321,14 +321,15 @@ class EventListenersGroup:
         event_json = self.event_json()
         if self.event_type == "MouseEvent":
             typenames = list(self._event_listeners)
+            event_json = f"function _ev(e){{return {event_json}}}"
             listeners = [
                 (
                     f"window.addEventListener({typename!r}, (e) => "
-                    f" f({event_json}, {typename!r}, p(e.srcElement)));"
+                    f" f(_ev(e), {typename!r}, p(e.srcElement)));"
                 )
                 for typename in typenames
             ]
-            return "".join(listeners)
+            return event_json + "".join(listeners)
         else:
             return "".join(
                 event_listener.into_script(event_json)
