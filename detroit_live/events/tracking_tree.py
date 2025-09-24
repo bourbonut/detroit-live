@@ -86,7 +86,7 @@ class TrackingTree:
         if node in self.__cache_path:
             return self.__cache_path[node]
         path = self.__tree.getelementpath(node)
-        path = f"{path}[1]" if path[-1] != "]" else path
+        path = f"{self.root.tag}/{path}[1]" if path[-1] != "]" else f"{self.root.tag}/{path}"
         self.__cache_path[node] = path
         self.__cache_node[path] = node
         return path

@@ -50,7 +50,17 @@ function p(e) {
 }
 
 function q(u) {
-    return document.querySelector(u)
+    var n, s = u.split(" "), t = s[s.length - 2], els = document.querySelectorAll(u);
+    if ((n = els.length) === 1 || t === undefined) {
+        return els[0];
+    } else {
+        for (var i = 0, el; i < n; i++){
+            el = els[i];
+            if (el.parentNode.tagName === t) {
+                return el;
+            }
+        }
+    }
 }
 
 socket.addEventListener('message', (e) => {
@@ -60,6 +70,9 @@ socket.addEventListener('message', (e) => {
         for (var i1 = 0, r, n = t.length; i1 < n; ++i1) {
             r = t[i1];
             const el = q(r.elementId);
+            if (el == undefined) {
+                continue;
+            }
             if (r.diff != undefined) {
                 var c = r.diff.change;
                 for (var i2 = 0, k, v, m = c.length; i2 < m; ++i2) {
