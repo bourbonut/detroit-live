@@ -19,4 +19,6 @@
 pip install git+https://github.com/bourbonut/detroit-live.git
 python examples/heatmap.py
 python examples/rainbow_circles.py
+python examples/index_chart.py
+python examples/quadtree_find_circle.py
 ```
