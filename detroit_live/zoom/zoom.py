@@ -150,6 +150,17 @@ class Gesture:
         )
 
 class Zoom:
+    """
+    Creates a new zoom behavior. The returned behavior, zoom, is both an object
+    and a function, and is typically applied to selected elements via
+    :code:`Selection.call`.
+
+    Parameters
+    ----------
+    extra_nodes: list[etree.Element] | None
+        Extra nodes to update when the listener is called
+    """
+
     _shared = _zoom_state
 
     def __init__(self, extra_nodes: list[etree.Element] | None = None):
@@ -178,6 +189,17 @@ class Zoom:
         self._v = None
 
     def __call__(self, selection: LiveSelection):
+        """
+        Applies this zoom behavior to the specified selection, binding the
+        necessary event listeners to allow panning and zooming, and
+        initializing the zoom transform on each selected element to the
+        identity transform if not already defined.
+
+        Parameters
+        ----------
+        selection : LiveSelection
+            Selection
+        """
         selection.each(default_transform)
         (
             selection
@@ -200,6 +222,22 @@ class Zoom:
         point: tuple[float, float],
         event: Event,
     ):
+        """
+        Sets the current zoom transform of the selected elements to the
+        specified transform, instantaneously emitting start, zoom and end
+        events.
+
+        Parameters
+        ----------
+        collection : LiveSelection
+            Selection
+        transform : EtreeFunction[T, Transform] | Transform
+            Transform object or function which returns a tranform object
+        point : tuple[float, float]
+            2D point
+        event : Event
+            Event
+        """
         selection = collection.selection() if hasattr(collection, "selection") else collection
         selection.each(default_transform)
         if collection != selection:
@@ -223,6 +261,31 @@ class Zoom:
         p: tuple[float, float],
         event: Event,
     ):
+        """
+        If :code:`selection` is a selection, scales the current zoom transform
+        of the selected elements by k, such that the new :math:`k_1 = k_0 k`.
+        The reference point :code:`p` does move. If :code:`p` is not specified,
+        it defaults to the center of the viewport extent. If selection is a
+        transition, defines a "zoom" tween translating the current transform.
+        This method is a convenience method for :code:`zoom.transform`. The
+        :code:`k` scale factor may be specified either as a number or a
+        function that returns a number; similarly the p point may be specified
+        either as a two-element array :math:`[p_x, p_y]` or a function. If a
+        function, it is invoked for each selected element, being passed the
+        current datum :code:`d` and index :code:`i`, with the this context as
+        the current DOM element.
+
+        Parameters
+        ----------
+        selection : LiveSelection
+            Selection
+        k : EtreeFunction[T, float] | float
+            Scale factor or function which returns the scale factor
+        p : tuple[float, float]
+            2D point
+        event : Event
+            Event
+        """
         def kfunc(
             node: etree.Element,
             d: T,
@@ -237,10 +300,35 @@ class Zoom:
     def scale_to(
         self,
         selection: LiveSelection,
-        k: EtreeFunction[T, float],
+        k: EtreeFunction[T, float] | float,
         p: EtreeFunction[T, tuple[float, float]] | tuple[float, float] | None,
         event: Event,
     ):
+        """
+        If :code:`selection` is a selection, scales the current zoom transform
+        of the selected elements by k, such that the new :math:`k_1 = k`. The
+        reference point :code:`p` does move. If :code:`p` is not specified, it
+        defaults to the center of the viewport extent. If selection is a
+        transition, defines a "zoom" tween translating the current transform.
+        This method is a convenience method for :code:`zoom.transform`. The
+        :code:`k` scale factor may be specified either as a number or a
+        function that returns a number; similarly the p point may be specified
+        either as a two-element array :math:`[p_x, p_y]` or a function. If a
+        function, it is invoked for each selected element, being passed the
+        current datum :code:`d` and index :code:`i`, with the this context as
+        the current DOM element.
+
+        Parameters
+        ----------
+        selection : LiveSelection
+            Selection
+        k : EtreeFunction[T, float] | float
+            Scale factor or function which returns the scale factor
+        p : EtreeFunction[T, tuple[float, float]] | tuple[float, float] | None
+            2D point or function which returns a 2D point
+        event : Event
+            Event
+        """
         def transform(
             node: etree.Element,
             d: T,
@@ -266,6 +354,31 @@ class Zoom:
         y: EtreeFunction[T, float] | float,
         event: Event,
     ):
+        """
+        If selection is a selection, translates the current zoom transform of
+        the selected elements by :code:`x` and :code:`y`, such that the new
+        :math:`t_{x1} = t_{x0} + kx` and :math:`t_{y1} = t_{y0} + ky`. If
+        selection is a transition, defines a "zoom" tween translating the
+        current transform. This method is a convenience method for
+        zoom.transform. The :code:`x` and :code:`y` translation amounts may be
+        specified either as numbers or as functions that return numbers. If a
+        function, it is invoked for each selected element, being passed the
+        current datum :code:`d` and index :code:`i`, with the this context as
+        the current DOM element.
+
+        Parameters
+        ----------
+        selection : LiveSelection
+            Selection
+        x : EtreeFunction[T, float] | float
+            x-coordinate translation value or function which returns the
+            x-coordinate translation value
+        y : EtreeFunction[T, float] | float
+            y-coordinate translation value or function which returns the
+            y-coordinate translation value
+        event : Event
+            Event
+        """
         def transform(
             node: etree.Element,
             d: T,
@@ -285,11 +398,38 @@ class Zoom:
     def translate_to(
         self,
         selection: LiveSelection,
-        x: EtreeFunction[T, float],
-        y: EtreeFunction[T, float],
+        x: EtreeFunction[T, float] | float,
+        y: EtreeFunction[T, float] | float,
         p: EtreeFunction[T, tuple[float, float]] | tuple[float, float] | None,
         event: Event,
     ):
+        """
+        If selection is a selection, translates the current zoom transform of
+        the selected elements by :code:`x` and :code:`y`, such that the new
+        :math:`t_{x1} = t_{x0} + kx` and :math:`t_{y1} = t_{y0} + ky`. If
+        selection is a transition, defines a "zoom" tween translating the
+        current transform. This method is a convenience method for
+        zoom.transform. The :code:`x` and :code:`y` translation amounts may be
+        specified either as numbers or as functions that return numbers. If a
+        function, it is invoked for each selected element, being passed the
+        current datum :code:`d` and index :code:`i`, with the this context as
+        the current DOM element.
+
+        Parameters
+        ----------
+        selection : LiveSelection
+            Selection
+        x : EtreeFunction[T, float] | float
+            x-coordinate translation value or function which returns the
+            x-coordinate translation value
+        y : EtreeFunction[T, float] | float
+            y-coordinate translation value or function which returns the
+            y-coordinate translation value
+        p: EtreeFunction[T, tuple[float, float]] | tuple[float, float] | None
+            2D point or function which returns a 2D point
+        event : Event
+            Event
+        """
         def transform(
             node: etree.Element,
             d: T,
@@ -556,11 +696,60 @@ class Zoom:
                     if p:
                         p(event, d, node)
 
-    def on(self, typename: str, callback: Callable[..., None]) -> TZoom:
-        self._listeners.on(typename, callback)
+    def on(self, typenames: str, callback: Callable[..., None]) -> TZoom:
+        """
+        Sets the event listener for the specified typenames and returns the
+        zoom behavior. If an event listener was already registered for the same
+        type and name, the existing listener is removed before the new listener
+        is added. If :code:`listener` is :code:`None`, removes the current
+        event listeners for the specified typenames, if any. If listener is not
+        specified, returns the first currently-assigned listener matching the
+        specified typenames, if any. When a specified event is dispatched, each
+        listener will be invoked with the same context and arguments as
+        selection.on listeners: the current event (event) and datum :code:`d`,
+        with the this context as the current DOM element.
+
+        The typenames is a string containing one or more typename separated by
+        whitespace. Each typename is a type, optionally followed by a period
+        (.) and a name, such as zoom.foo and zoom.bar; the name allows multiple
+        listeners to be registered for the same type. The type must be one of
+        the following:
+
+        - :code:`"start"` - after zooming begins (such as on mousedown).
+        - :code:`"zoom"` - after a change to the zoom transform (such as on
+          mousemove).
+        - :code:`"end"` - after zooming ends (such as on mouseup ).
+
+        Parameters
+        ----------
+        typenames : str
+            Typenames
+        callback : Callable[..., None]
+            Callback function
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
+        self._listeners.on(typenames, callback)
         return self
 
     def set_wheel_delta(self, wheel_delta: Callable[[Event], float] | float) -> TZoom:
+        """
+        Sets the wheel delta function to the specified function and returns the
+        zoom behavior.
+
+        Parameters
+        ----------
+        wheel_delta : Callable[[Event], float] | float
+            Wheel delta function or constant value
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         if callable(wheel_delta):
             self._wheel_delta = wheel_delta
         else:
@@ -568,13 +757,60 @@ class Zoom:
         return self
 
     def set_filter(self, filter_func: EventFunction[T | None, bool] | bool) -> TZoom:
+        """
+        Sets the filter to the specified function and returns the zoom
+        behavior.
+
+        The filter is passed the current event (:code:`event`) and datum
+        :code:`d`, with the this context as the current DOM element. If the
+        filter returns falsey, the initiating event is ignored and no zoom
+        gestures are started. Thus, the filter determines which input events
+        are ignored. The default filter ignores mousedown events on secondary
+        buttons, since those buttons are typically intended for other purposes,
+        such as the context menu.
+
+        Parameters
+        ----------
+        filter_func : EventFunction[T | None, bool] | bool
+            Filter function
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         if callable(filter_func):
             self._filter = filter_func
         else:
             self._filter = constant(filter_func)
         return self
 
-    def set_touchable(self, touchable: Callable[[LiveSelection], EventFunction[T | None, bool]] | Callable[..., bool]) -> TZoom:
+    def set_touchable(
+        self,
+        touchable: Callable[[LiveSelection], EventFunction[T | None, bool]] | Callable[..., bool]
+    ) -> TZoom:
+        """
+        Sets the touch support detector to the specified function and returns
+        the zoom behavior.
+
+        Touch event listeners are only registered if the detector returns
+        truthy for the corresponding element when the zoom behavior is applied.
+        The default detector works well for most browsers that are capable of
+        touch input, but not all; Chrome’s mobile device emulator, for example,
+        fails detection.
+
+        Parameters
+        ----------
+        touchable : Callable[[LiveSelection], EventFunction[T | None, bool]] | Callable[..., bool]
+            Function which takes a selection and returns a touchable function.
+            Therefore, the *wrapped* function (touchable function) can access
+            to the selection.
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         if callable(touchable(None)):
             self._touchable = touchable
         else:
@@ -586,6 +822,33 @@ class Zoom:
         return self
 
     def set_extent(self, extent: Callable[[etree.Element], Extent] | Extent) -> TZoom:
+        """
+        If extent is specified, sets the viewport extent to the specified array
+        of points :math:`[[x_0, y_0], [x_1, y_1]]`, where :math:`[x_0, y_0]` is
+        the top-left corner of the viewport and :math:`[x_1, y_1]` is the
+        bottom-right corner of the viewport, and returns this zoom behavior.
+        The extent may also be specified as a function which returns such an
+        array; if a function, it is invoked for each selected element, being
+        passed the current datum d, with the this context as the current DOM
+        element.
+
+        The viewport extent affects several functions: the center of the
+        viewport remains fixed during changes by :code:`zoom.scale_by` and
+        :code:`zoom.scale_to`; the viewport center and dimensions affect the
+        path chosen by :code:`interpolate_zoom`; and the viewport extent is
+        needed to enforce the optional translate extent.
+
+        Parameters
+        ----------
+        extent : Callable[[etree.Element], Extent] | Extent
+            Array of points :math:`[[x_0, y_0], [x_1, y_1]]` or function which
+            returns an array of points :math:`[[x_0, y_0], [x_1, y_1]]`
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         if callable(extent):
             self._extent = extent
         else:
@@ -593,11 +856,51 @@ class Zoom:
         return self
 
     def set_scale_extent(self, scale_extent: tuple[float, float]) -> TZoom:
+        """
+        If extent is specified, sets the scale extent to the specified array of
+        numbers :math:`[k_0, k_1]` where k0 is the minimum allowed scale factor
+        and :math:`k_1` is the maximum allowed scale factor, and returns this
+        zoom behavior. The scale extent restricts zooming in and out. It is
+        enforced on interaction and when using :code:`zoom.scale_by`,
+        :code:`zoom.scale_to` and :code:`zoom.translate_by`; however, it is not
+        enforced when using zoom.transform to set the transform explicitly.
+
+        Parameters
+        ----------
+        scale_extent : tuple[float, float]
+            Array of numbers :math:`[k_0, k_1]`
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         self._scale_extent[0] = scale_extent[0]
         self._scale_extent[1] = scale_extent[1]
         return self
 
     def set_translate_extent(self, translate_extent: Extent) -> TZoom:
+        """
+        If extent is specified, sets the translate extent to the specified
+        array of points :math:`[[x_0, y_0], [x_1, y_1]]`, where :math:`[x_0,
+        y_0]` is the top-left corner of the world and :math:`[x_1, y_1]` is the
+        bottom-right corner of the world, and returns this zoom behavior. The
+        translate extent restricts panning, and may cause translation on zoom
+        out. It is enforced on interaction and when using
+        :code:`zoom.scale_by`, :code:`zoom.scale_to` and
+        :code:`zoom.translate_by`; however, it is not enforced when using
+        zoom.transform to set the transform explicitly.
+
+        Parameters
+        ----------
+        translate_extent : Extent
+            Array of points :math:`[[x_0, y_0], [x_1, y_1]]`
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         self._translate_extent[0][0] = translate_extent[0][0]
         self._translate_extent[1][0] = translate_extent[1][0]
         self._translate_extent[0][1] = translate_extent[0][1]
@@ -605,22 +908,101 @@ class Zoom:
         return self
 
     def set_constrain(self, constrain: Callable[[Transform, Extent, Extent], Transform]) -> TZoom:
+        """
+        Sets the transform constraint function to the specified function and
+        returns the zoom behavior.
+
+        The constraint function must return a :code:`Transform` object given
+        the current transform, viewport extent and translate extent. The
+        default implementation attempts to ensure that the viewport extent does
+        not go outside the translate extent.
+
+        Parameters
+        ----------
+        constrain : Callable[[Transform, Extent, Extent], Transform]
+            Constrain function
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         self._constrain = constrain
         return self
 
     def set_duration(self, duration: int | float) -> TZoom:
+        """
+        Sets the duration for zoom transitions on double-click and double-tap
+        to the specified number of milliseconds and returns the zoom behavior.
+
+        Parameters
+        ----------
+        duration : int | float
+            Duration in milliseconds
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         self._duration = duration
         return self
 
     def set_interpolate(self, interpolation: Callable[[float, float], Callable[[float], float]]) -> TZoom:
+        """
+        Sets the interpolation factory for zoom transitions to the specified
+        function.
+
+        Parameters
+        ----------
+        interpolation : Callable[[float, float], Callable[[float], float]]
+            Interpolation function
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         self._interpolate = interpolation
         return self
 
     def set_click_distance(self, click_distance: int | float) -> TZoom:
+        """
+        Sets the maximum distance that the mouse can move between mousedown and
+        mouseup that will trigger a subsequent click event. If at any point
+        between mousedown and mouseup the mouse is greater than or equal to
+        distance from its position on mousedown, the click event following
+        mouseup will be suppressed.
+
+        Parameters
+        ----------
+        click_distance : int | float
+            Click distance value
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         self._click_distance2 = click_distance * click_distance
         return self
 
     def set_tap_distance(self, tap_distance: int | float) -> TZoom:
+        """
+        Sets the maximum distance that a double-tap gesture can move between
+        first touchstart and second touchend that will trigger a subsequent
+        double-click event.
+
+        Parameters
+        ----------
+        tap_distance : int | float
+            Tap distance value
+
+        Returns
+        -------
+        Zoom
+            Itself
+        """
         self._tap_distance = tap_distance
         return self
 

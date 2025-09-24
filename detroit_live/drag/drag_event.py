@@ -7,6 +7,35 @@ from ..events import Event
 TDragEvent = TypeVar("DragEvent", bound="DragEvent")
 
 class DragEvent:
+    """
+    Drag event
+
+    Attributes
+    ----------
+    event_type : str
+        The event type
+    source_event : Event
+        The underlying input event, such as mousemove or touchmove
+    subject : etree.Element | None
+        The drage subject
+    target : etree.Element
+        The associated drag behavior
+    identifier : str
+        The string "mouse", or a numeric touch identifier
+    active : int
+        The number of currently active drag gestures (on start and end, not
+        including this one).
+    x : float
+        The new x-coordinate of the subject
+    y : float
+        The new y-coordinate of the subject
+    dx : float
+        The change in x-coordinate since the previous drag event
+    dy : float
+        The change in y-coordinate since the previous drag event
+    dispatch : Dispatch
+        The dispatch listeners
+    """
     def __init__(
         self,
         event_type: str,

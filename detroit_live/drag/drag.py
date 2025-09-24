@@ -89,7 +89,16 @@ class Gesture:
 
 
 class Drag:
+    """
+    Creates a new drag behavior. The returned behavior, drag, is both an object
+    and a function, and is typically applied to selected elements via
+    :code:`Selection.call`.
 
+    Parameters
+    ----------
+    extra_nodes: list[etree.Element] | None
+        Extra nodes to update when the listener is called
+    """
     def __init__(self, extra_nodes: list[etree.Element] | None = None):
         self._extra_nodes = extra_nodes
         self._filter = argpass(default_filter)
@@ -107,6 +116,16 @@ class Drag:
         self._click_distance_2 = 0
 
     def __call__(self, selection: LiveSelection):
+        """
+        Applies this drag behavior to the specified selection. This function is
+        typically not invoked directly, and is instead invoked via
+        :code:`Selection.call`.
+
+        Parameters
+        ----------
+        selection : LiveSelection
+            Selection
+        """
         (
             selection
             .on("mousedown.drag", self._mouse_downed, self._extra_nodes)
@@ -225,6 +244,26 @@ class Drag:
                 gesture("end", event, touch)
 
     def set_filter(self, filter_func: EventFunction[T | None, bool]) -> TDrag:
+        """
+        Sets the event filter to the specified function and returns the drag
+        behavior.
+
+        If the filter returns false, the initiating event is ignored and no
+        drag gestures are started. Thus, the filter determines which input
+        events are ignored; the default filter ignores mousedown events on
+        secondary buttons, since those buttons are typically intended for other
+        purposes, such as the context menu.
+
+        Parameters
+        ----------
+        filter_func : EventFunction[T | None, bool]
+            Filter function
+
+        Returns
+        -------
+        Drag
+            Itself
+        """
         if callable(filter_func):
             self._filter = filter_func
         else:
@@ -232,6 +271,26 @@ class Drag:
         return self
 
     def set_subject(self, subject: EventFunction[T | None, T | dict[str, float]]) -> TDrag:
+        """
+        Sets the subject accessor to the specified object or function and
+        returns the drag behavior.
+
+        The subject of a drag gesture represents the thing being dragged. It is
+        computed when an initiating input event is received, such as a
+        mousedown or touchstart, immediately before the drag gesture starts.
+        The subject is then exposed as event.subject on subsequent drag events
+        for this gesture.
+
+        Parameters
+        ----------
+        subject : EventFunction[T | None, T | dict[str, float]]
+            Subject function
+
+        Returns
+        -------
+        Drag
+            Itself
+        """
         if callable(subject):
             self._subject = subject
         else:
@@ -239,17 +298,95 @@ class Drag:
         return self
 
     def set_touchable(self, touchable: Callable[[LiveSelection], EventFunction[T | None, bool]]) -> TDrag:
+        """
+        Sets the touch support detector to the specified function and returns
+        the drag behavior. 
+
+        Parameters
+        ----------
+        touchable : Callable[[LiveSelection], EventFunction[T | None, bool]]
+            Touchable function
+
+        Returns
+        -------
+        Drag
+            Itself
+        """
         if callable(touchable):
             self._touchable = touchable
         else:
             self._touchable = constant(touchable)
         return self
 
-    def on(self, typename: str, callback: Callable[..., None]) -> TDrag:
-        self._listeners.on(typename, callback)
+    def on(self, typenames: str, callback: Callable[..., None]) -> TDrag:
+        """
+        If listener is specified, sets the event listener for the specified
+        typenames and returns the drag behavior. If an event listener was
+        already registered for the same type and name, the existing listener is
+        removed before the new listener is added. If listener is null, removes
+        the current event listeners for the specified typenames, if any. If
+        listener is not specified, returns the first currently-assigned
+        listener matching the specified typenames, if any. When a specified
+        event is dispatched, each listener will be invoked with the same
+        context and arguments as selection.on listeners: the current event
+        (event) and datum d, with the this context as the current DOM element.
+
+        The typenames is a string containing one or more typename separated by
+        whitespace. Each typename is a type, optionally followed by a period
+        (.) and a name, such as drag.foo and drag.bar; the name allows multiple
+        listeners to be registered for the same type. The type must be one of
+        the following:
+
+        - :code:`"start"` - after a new pointer becomes active (on mousedown or
+          touchstart).
+        - :code:`"drag"` - after an active pointer moves (on mousemove or
+          touchmove).
+        - :code:`"end"` - after an active pointer becomes inactive (on mouseup,
+          touchend or touchcancel).
+
+
+        Changes to registered listeners via drag.on during a drag gesture do
+        not affect the current drag gesture. Instead, you must use event.on,
+        which also allows you to register temporary event listeners for the
+        current drag gesture. Separate events are dispatched for each active
+        pointer during a drag gesture. For example, if simultaneously dragging
+        multiple subjects with multiple fingers, a start event is dispatched
+        for each finger, even if both fingers start touching simultaneously.
+        See Drag Events for more.
+
+        Parameters
+        ----------
+        typenames : str
+            Typenames
+        callback : Callable[..., None]
+            Callback
+
+        Returns
+        -------
+        Drag
+            Itself
+        """
+        self._listeners.on(typenames, callback)
         return self
 
     def set_click_distance(self, click_distance: float) -> TDrag:
+        """
+        Sets the maximum distance that the mouse can move between mousedown and
+        mouseup that will trigger a subsequent click event. If at any point
+        between mousedown and mouseup the mouse is greater than or equal to
+        distance from its position on mousedown, the click event following
+        mouseup will be suppressed.
+
+        Parameters
+        ----------
+        click_distance : float
+            Click distance value
+
+        Returns
+        -------
+        Drag
+            Itself
+        """
         self._click_distance_2 = click_distance * click_distance
         return self
 

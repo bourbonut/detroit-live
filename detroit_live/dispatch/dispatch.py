@@ -37,12 +37,57 @@ class Dispatch:
         self._typenames = typenames
 
     def __call__(self, typename: str, *args: Any):
+        """
+        Invokes each registered callback for the specified type, passing the
+        callback the specified arguments, with that as the this context.
+
+        Parameters
+        ----------
+        typename : str
+            Typename
+        args : Any
+            Additional arguments passed to the :code:`callback` function
+
+        """
         if typename not in self._typenames:
             raise ValueError(f"Unknown type: {typename!r}")
         for name, callback in self._typenames[typename]:
             callback(*args)
 
-    def on(self, typename: str, callback: Callback) -> TDispatch:
+    def on(self, typename: str, callback: Callback | None = None) -> TDispatch:
+        """
+        Adds, removes or gets the :code:`callback` for the specified typenames.
+        If a callback function is specified, it is registered for the specified
+        (fully-qualified) typenames. If a :code:`callback` was already
+        registered for the given typenames, the existing callback is removed
+        before the new callback is added.
+
+        The specified typenames is a string, such as start or end.foo. The type
+        may be optionally followed by a period (.) and a name; the optional
+        name allows multiple callbacks to be registered to receive events of
+        the same type, such as start.foo and start.bar. To specify multiple
+        typenames, separate typenames with spaces, such as start end or
+        start.foo start.bar.
+
+        To remove all callbacks for a given name :code:`foo`, say
+        :code:`dispatch.on(".foo", null)`.
+
+        If :code:`callback` is not specified, returns the current callback for
+        the specified typenames, if any. If multiple typenames are specified,
+        the first matching callback is returned.
+
+        Parameters
+        ----------
+        typename : str
+            Typename value
+        callback : Callback | None
+            Callback
+
+        Returns
+        -------
+        Dispatch
+            Itself
+        """
         parsed_types = self.parse_typenames(typename)
         if not callable(callback):
             raise TypeError("'callback' must be a function")
@@ -69,7 +114,16 @@ class Dispatch:
             values.append((typename, name))
         return values
 
-    def copy(self):
+    def copy(self) -> TDispatch:
+        """
+        Returns a copy of this dispatch object. Changes to this dispatch do not
+        affect the returned copy and vice versa.
+
+        Returns
+        -------
+        Dispatch
+            Dispatch copy
+        """
         return Dispatch(deepcopy(self._typenames))
 
     def __str__(self):
@@ -77,6 +131,20 @@ class Dispatch:
 
 
 def dispatch(*typenames: str) -> Dispatch:
+    """
+    Creates a new dispatch for the specified event types. Each type is a
+    string, such as :code:`"start"` or :code:`"end"`.
+
+    Parameters
+    ----------
+    typenames : str
+        Typename value such as :code:`"start"` or :code:`"end"`
+
+    Returns
+    -------
+    Dispatch
+        Dispatch object
+    """
     dispatch_typenames = {}
     for typename in typenames:
         if (

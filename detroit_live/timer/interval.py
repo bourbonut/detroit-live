@@ -33,7 +33,25 @@ def interval(
     callback: Callable[[float, Callable[[None], None]], None],
     delay: float | None = None,
     starting_time: float | None = None,
-):
+) -> Timer | Interval:
+    """
+    The :code:`callback` is invoked only every delay milliseconds; if
+    :code:`delay` is not specified, this is equivalent to timer.
+
+    Parameters
+    ----------
+    callback : Callable[[float, Callable[[None], None]], None]
+        Callback
+    delay : float | None
+        Delay value
+    starting_time : float | None
+        Starting time value
+
+    Returns
+    -------
+    Timer | Interval
+        :code:`Timer` if :code:`delay` is not specified else :code:`Interval`.
+    """
     timer = Timer() if delay is None else Interval(delay)
     timer.restart(callback, delay, starting_time)
     return timer

@@ -5,6 +5,22 @@ from ..events import Event
 from .transform import Transform
 
 class ZoomEvent:
+    """
+    Zoom Event
+
+    Attributes
+    ----------
+    event_type : str
+        The event type
+    source_event : Event
+        The underlying input event such as mousemove or touchmove
+    target : etree.Element
+        The associated zoom behavior
+    transform : Transform
+        The current zoom transform
+    dispatch : Dispatch
+        The dispatch listeners
+    """
     def __init__(
         self,
         event_type: str,
