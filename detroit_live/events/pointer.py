@@ -1,5 +1,5 @@
 import re
-import warnings
+import logging
 from typing import Optional
 
 from lxml import etree
@@ -8,10 +8,29 @@ from .types import MouseEvent, WheelEvent
 
 TRANSFORM_PATTERN = re.compile(r"(translate|scale)\(([^)]+)\)")
 
+log = logging.getLogger(__name__)
 
 def pointer(
     event: MouseEvent | WheelEvent, node: Optional[etree.Element] = None
 ) -> tuple[float, float]:
+    """
+    Returns a two-element array of numbers :math:`[x, y]` representing the
+    coordinates of the specified event relative to the specified target.
+
+    Parameters
+    ----------
+    event : MouseEvent | WheelEvent
+        Mouse event or wheel event
+    node : Optional[etree.Element]
+        If the :code:`node` is specified, the event's coordinates are
+        transformed using the inverse of the screen coordinate transformation
+        matrix.
+
+    Returns
+    -------
+    tuple[float, float]
+        Coordinates :math:`[x, y]`
+    """
     tx = 0
     ty = 0
     k = 1
@@ -26,9 +45,8 @@ def pointer(
                     case ("scale", v):
                         k = float(v.strip())
                     case (unknown, values):
-                        warnings.warn(
+                        log.warning(
                             f"Unknown transformation: {unknown} with values {values}",
-                            category=UserWarning,
                         )
             return (event.client_x - tx) / k, (event.client_y - ty) / k
         # return event.client_x - event.rect_left, event.client_y - event.rect_top

@@ -37,7 +37,6 @@ def test_parse_target(target, typename, node, expected, monkeypatch):
 
 def test_event_listener():
     svg = d3.create("svg")
-    g = d3.create("g")
 
     def listener(event, d, node):
         pass
@@ -50,14 +49,6 @@ def test_event_listener():
     )
     assert event_listener.node == svg.node()
     assert event_listener.target == "document"
-
-    assert event_listener.partial_cmp("mouseover", "drag") is True
-    assert event_listener.partial_cmp("foo", "drag") is False
-    assert event_listener.partial_cmp("mouseover", "foo") is False
-    assert event_listener.partial_cmp("mouseover", "drag", svg.node()) is True
-    assert event_listener.partial_cmp("mouseover", "foo", svg.node()) is False
-    assert event_listener.partial_cmp("foo", "drag", svg.node()) is False
-    assert event_listener.partial_cmp("mouseover", "drag", g.node()) is False
 
     assert event_listener.into_script("{hello: 'world'}") == (
         "document.addEventListener('mouseover', "

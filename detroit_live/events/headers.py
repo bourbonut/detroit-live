@@ -96,5 +96,20 @@ socket.addEventListener('message', (e) => {
 EVENT_HEADERS = "".join(s.strip() for s in EVENT_HEADERS.split("\n")).strip()
 
 
-def headers(host: str, port: int):
+def headers(host: str, port: int) -> str:
+    """
+    Returns the headers used by the event script in JavaScript.
+
+    Parameters
+    ----------
+    host : str
+        Host value
+    port : int
+        Port value
+
+    Returns
+    -------
+    str
+        Headers of event script used by JavaScript
+    """
     return EVENT_HEADERS.replace("localhost", host).replace("5000", str(port))

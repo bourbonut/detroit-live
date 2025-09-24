@@ -64,7 +64,7 @@ class TrackingTree:
     @property
     def root(self) -> etree.Element | None:
         """
-        Returns the root node of the tree
+        Returns the root node of the tree.
 
         Returns
         -------
@@ -75,7 +75,7 @@ class TrackingTree:
 
     def get_path(self, node: etree.Element) -> str:
         """
-        Gets the path of the specified node in the tree
+        Gets the path of the specified node in the tree.
 
         Parameters
         ----------
@@ -101,7 +101,7 @@ class TrackingTree:
 
     def get_node(self, path: str) -> etree.Element | None:
         """
-        Gets the node element given a path in the tree
+        Gets the node element given a path in the tree.
 
         Parameters
         ----------
