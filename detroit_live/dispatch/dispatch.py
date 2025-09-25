@@ -37,7 +37,7 @@ def update_callbacks(callbacks: list[NamedCallback], refname: str, callback: Cal
 
 
 class Dispatch:
-    def __init__(self, typenames: dict[list[NamedCallback]]):
+    def __init__(self, typenames: dict[str, list[NamedCallback]]):
         self._typenames = typenames
 
     def __call__(self, typename: str, *args: Any):
