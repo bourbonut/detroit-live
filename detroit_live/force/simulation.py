@@ -3,9 +3,11 @@ from typing import TypeVar
 
 from detroit.force.simulation import ForceSimulation
 from detroit.types import SimulationNode
+from lxml import etree
 
 from ..dispatch import dispatch
-from ..timer import timer
+from ..timer import TimerEvent
+from ..events import _event_producers
 
 TLiveForceSimulation = TypeVar("LiveForceSimulation", bound="LiveForceSimulation")
 
@@ -14,13 +16,13 @@ class LiveForceSimulation(ForceSimulation):
     def __init__(self, nodes: list[SimulationNode]):
         super().__init__(nodes)
         self._event = dispatch("tick", "end")
-        self._stepper = timer(self._step)
+        self._stepper = _event_producers.add_timer(self._step)
 
-    def _step(self, elapsed: float, stop: Callable[[None], None]):
+    def _step(self, elapsed: float, timer_event: TimerEvent):
         self.tick()
         self._event("tick", self)
         if self._alpha < self._alpha_min:
-            stop()
+            timer_event.set()
             self._event("end", self)
 
     def restart(self) -> TLiveForceSimulation:
@@ -55,7 +57,10 @@ class LiveForceSimulation(ForceSimulation):
         return self
 
     def on(
-        self, typename: str, listener: Callable[[TLiveForceSimulation], None]
+        self,
+        typename: str,
+        listener: Callable[[TLiveForceSimulation], None],
+        extra_nodes: list[etree.Element] | None = None,
     ) -> TLiveForceSimulation:
         """
         Sets the event listener for the specified typenames and returns this
@@ -73,9 +78,11 @@ class LiveForceSimulation(ForceSimulation):
         Parameters
         ----------
         typename : str
-
+            Typename
         listener : Callable[[LiveForceSimulation], None]
             Listener
+        extra_nodes : list[etree.Element] | None
+            Extra nodes to update when the listener is called
 
         Returns
         -------
@@ -91,6 +98,8 @@ class LiveForceSimulation(ForceSimulation):
         velocities inside a tick event listener.
         """
         self._event.on(typename, listener)
+        _event_producers.remove_timer(self._stepper)
+        self._stepper = _event_producers.add_timer(self._step, extra_nodes)
         return self
 
 

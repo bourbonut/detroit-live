@@ -1,13 +1,13 @@
 import asyncio
 from collections.abc import Callable
 
-from .timer import Timer, TimeEvent, now
+from .timer import Timer, TimerEvent, now
 
 
 class Interval(Timer):
     async def restart(
         self,
-        callback: Callable[[float, TimeEvent], None],
+        callback: Callable[[float, TimerEvent], None],
         delay: float | None = None,
         starting_time: float | None = None,
     ) -> int:
@@ -26,7 +26,7 @@ class Interval(Timer):
 
 
 async def interval(
-    callback: Callable[[float, TimeEvent], None],
+    callback: Callable[[float, TimerEvent], None],
     delay: float | None = None,
     starting_time: float | None = None,
 ) -> Timer | Interval:
@@ -36,7 +36,7 @@ async def interval(
 
     Parameters
     ----------
-    callback : Callable[[float, TimeEvent], None]
+    callback : Callable[[float, TimerEvent], None]
         Callback
     delay : float | None
         Delay value

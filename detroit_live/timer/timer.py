@@ -21,7 +21,7 @@ def now() -> float:
     return time.perf_counter()
 
 
-class TimeEvent:
+class TimerEvent:
     def __init__(self):
         self.__is_set = False
 
@@ -42,7 +42,7 @@ class Timer:
 
     async def restart(
         self,
-        callback: Callable[[float, TimeEvent], None],
+        callback: Callable[[float, TimerEvent], None],
         delay: float | None = None,
         starting_time: float | None = None,
     ) -> int:
@@ -53,7 +53,7 @@ class Timer:
             await asyncio.sleep(0.017)
 
         self._start = now()
-        self._time_event = TimeEvent()
+        self._time_event = TimerEvent()
         self._callback = callback
 
         while not self._time_event.is_set():
@@ -66,7 +66,7 @@ class Timer:
 
 
 async def timer(
-    callback: Callable[[float, TimeEvent], None],
+    callback: Callable[[float, TimerEvent], None],
     delay: float | None = None,
     starting_time: float | None = None,
 ) -> Timer:
@@ -80,7 +80,7 @@ async def timer(
 
     Parameters
     ----------
-    callback : Callable[[float, TimeEvent], None]
+    callback : Callable[[float, TimerEvent], None]
         Callback
     delay : float | None
         Delay value

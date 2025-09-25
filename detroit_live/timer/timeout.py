@@ -1,10 +1,10 @@
 from collections.abc import Callable
 
-from .timer import Timer
+from .timer import Timer, TimerEvent
 
 
-def timeout(
-    callback: Callable[[float], None],
+async def timeout(
+    callback: Callable[[float, TimerEvent], None],
     delay: float | None = None,
     starting_time: float | None = None,
 ) -> Timer:
@@ -13,7 +13,7 @@ def timeout(
 
     Parameters
     ----------
-    callback : Callable[[float, Callable[[None], None]], None]
+    callback : Callable[[float, TimerEvent], None]
         Callback
     delay : float | None
         Delay value

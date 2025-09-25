@@ -78,10 +78,10 @@ def tick(simulation):
         .attr("y2", lambda d: d["target"]["y"])
     )
     (node.attr("cx", lambda d: d["x"]).attr("cy", lambda d: d["y"]))
-    print("TICK")
+    # print("TICK")
 
 
-simulation.on("tick", tick)
+simulation.on("tick", tick, extra_nodes=link.nodes() + node.nodes())
 
 # # Reheat the simulation when drag starts, and fix the subject position.
 # def dragstarted(event, d, node):
@@ -113,7 +113,5 @@ simulation.on("tick", tick)
 #     .on("drag", dragged)
 #     .on("end", dragended)
 # )
-
-print("END")
 
 svg.create_app().run()

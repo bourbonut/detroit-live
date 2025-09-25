@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Callable, Iterator
 from typing import Any, Optional, TypeVar
 
@@ -9,7 +10,7 @@ from lxml import etree
 from quart import websocket
 
 from ..dispatch import parse_typenames
-from ..events import Event, TrackingTree
+from ..events import Event, TrackingTree, _event_producers
 from .active import set_active
 from .app import App
 from .on import on_add, on_remove
@@ -1423,10 +1424,33 @@ class LiveSelection(Selection[T]):
 
         @app.websocket("/ws")
         async def ws():
+            pending = {asyncio.create_task(websocket.receive())}
+            if next_tasks := _event_producers.next_tasks():
+                pending.update(next_tasks)
+            if queue_task := _event_producers.queue_task():
+                pending.add(queue_task)
             while True:
-                event = orjson.loads(await websocket.receive())
-                for json in self._events(event):
-                    await websocket.send(orjson.dumps(json))
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                queue_added = False
+                for task in done:
+                    result = task.result()
+                    if isinstance(result, str):
+                        event = orjson.loads(result)
+                        for json in self._events(event):
+                            await websocket.send(orjson.dumps(json))
+                        pending.add(asyncio.create_task(websocket.receive()))
+                        continue
+                    elif isinstance(result, tuple):
+                        source, values = result
+                        await websocket.send(orjson.dumps(values))
+                    
+                    if next_tasks := _event_producers.next_tasks(result):
+                        pending.update(next_tasks)
+                    if not queue_added:
+                        if queue := _event_producers.queue_task(result):
+                            queue_added = True
+                            pending.add(queue)
+                        
 
         @app.route("/")
         async def index():
