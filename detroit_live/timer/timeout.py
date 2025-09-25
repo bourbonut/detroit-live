@@ -7,7 +7,6 @@ def timeout(
     callback: Callable[[float], None],
     delay: float | None = None,
     starting_time: float | None = None,
-    sleep_delay: float = 0.017,
 ) -> Timer:
     """
     Automatically stops on its first callback.
@@ -20,15 +19,13 @@ def timeout(
         Delay value
     starting_time : float | None
         Starting time value
-    sleep_delay : float
-        Time delay passed to :code:`time.sleep`; it defaults to :code:`0.017`.
 
     Returns
     -------
     Timer
         Timer with timeout
     """
-    timer = Timer(sleep_delay)
+    timer = Timer()
     delay = 0 if delay is None else delay
 
     def timeout_callback(
@@ -38,5 +35,5 @@ def timeout(
         stop()
         callback(elapsed + delay)
 
-    timer.restart(timeout_callback)
+    await timer.restart(timeout_callback, delay, starting_time)
     return timer

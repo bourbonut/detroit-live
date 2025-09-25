@@ -1,3 +1,4 @@
+import asyncio
 import time
 from collections.abc import Callable
 
@@ -20,41 +21,54 @@ def now() -> float:
     return time.perf_counter()
 
 
-class Timer:
-    def __init__(self, sleep_delay: float = 0.017):
-        self._start = now()
-        self._stop = False
-        self._callback = None
-        self._sleep_delay = sleep_delay
+class TimeEvent:
+    def __init__(self):
+        self.__is_set = False
 
-    def restart(
+    def is_set(self) -> bool:
+        return self.__is_set
+
+    def set(self):
+        self.__is_set = True
+
+    def clear(self):
+        self.__is_set = False
+
+class Timer:
+    def __init__(self):
+        self._time_event = None
+        self._callback = None
+        self._start = None
+
+    async def restart(
         self,
-        callback: Callable[[float, Callable[[None], None]], None],
+        callback: Callable[[float, TimeEvent], None],
         delay: float | None = None,
         starting_time: float | None = None,
-    ):
+    ) -> int:
         starting_time = now() if starting_time is None else starting_time
         delay = 0 if delay is None else delay * 1e-3
         difftime = (starting_time - now()) * 1e-3 + delay
         if difftime > 0:
-            time.sleep(self._sleep_delay)
+            await asyncio.sleep(0.017)
+
         self._start = now()
-        self._stop = False
+        self._time_event = TimeEvent()
         self._callback = callback
 
-        while not self._stop:
-            time.sleep(self._sleep_delay)
-            self._callback((now() - self._start) * 1e3, self.stop)
+        while not self._time_event.is_set():
+            await asyncio.sleep(0.017)
+            self._callback((now() - self._start) * 1e3, self._time_event)
+        return id(self)
 
     def stop(self):
-        self._stop = True
+        self._time_event.set()
 
 
-def timer(
-    callback: Callable[[float, Callable[[None], None]], None],
+async def timer(
+    callback: Callable[[float, TimeEvent], None],
     delay: float | None = None,
     starting_time: float | None = None,
-    sleep_delay: float = 0.017,
 ) -> Timer:
     """
     Schedules a new timer, invoking the specified :code:`callback` repeatedly
@@ -66,20 +80,18 @@ def timer(
 
     Parameters
     ----------
-    callback : Callable[[float, Callable[[None], None]], None]
+    callback : Callable[[float, TimeEvent], None]
         Callback
     delay : float | None
         Delay value
     starting_time : float | None
         Starting time value
-    sleep_delay : float
-        Time delay passed to :code:`time.sleep`; it defaults to :code:`0.017`.
 
     Returns
     -------
     Timer
         Timer
     """
-    timer = Timer(sleep_delay)
-    timer.restart(callback, delay, starting_time)
+    timer = Timer()
+    await timer.restart(callback, delay, starting_time)
     return timer
