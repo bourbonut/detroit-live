@@ -46,24 +46,30 @@ class Timer:
         delay: float | None = None,
         starting_time: float | None = None,
     ) -> int:
-        starting_time = now() if starting_time is None else starting_time
-        delay = 0 if delay is None else delay * 1e-3
-        difftime = (starting_time - now()) * 1e-3 + delay
-        frame_freq = 504 * 1e-6
-        if difftime > 0:
-            await asyncio.sleep(frame_freq)
+        try:
+            starting_time = now() if starting_time is None else starting_time
+            delay = 0 if delay is None else delay * 1e-3
+            difftime = (starting_time - now()) * 1e-3 + delay
+            frame_freq = 504 * 1e-6
+            if difftime > 0:
+                await asyncio.sleep(frame_freq)
 
-        self._start = now()
-        self._time_event = TimerEvent()
-        self._callback = callback
+            self._start = now()
+            self._time_event = TimerEvent()
+            self._callback = callback
 
-        while not self._time_event.is_set():
-            await asyncio.sleep(frame_freq)
-            self._callback((now() - self._start) * 1e3, self._time_event)
-        return id(self)
+            while not self._time_event.is_set():
+                await asyncio.sleep(frame_freq)
+                self._callback((now() - self._start) * 1e3, self._time_event)
+            return id(self)
+        except asyncio.CancelledError:
+            return id(self)
 
     def stop(self):
         self._time_event.set()
+
+    def __str__(self):
+        return f"Timer({self._time_event}, {self._callback}, {self._start})"
 
 
 async def timer(

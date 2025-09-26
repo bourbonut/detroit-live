@@ -1439,7 +1439,7 @@ class LiveSelection(Selection[T]):
                         for json in self._events(event):
                             await websocket.send(orjson.dumps(json))
                         pending.add(asyncio.create_task(websocket.receive()))
-                        continue
+                        result = None
                     elif isinstance(result, tuple):
                         source, values = result
                         await websocket.send(orjson.dumps(values))

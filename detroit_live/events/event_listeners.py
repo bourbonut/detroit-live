@@ -275,8 +275,7 @@ class EventListenersGroup:
         """
         typename = event["typename"]
         event = self.event.from_json(event)
-        result = self.filter_by(event, typename)
-        for event_listener in result:
+        for event_listener in self.filter_by(event, typename):
             if not event_listener.active:
                 continue
             yield list(event_listener.listener(event))

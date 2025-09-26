@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Iterator
 from enum import Enum, auto
 from queue import Queue
 from typing import Any
@@ -83,21 +84,20 @@ class EventProducers:
     ) -> Callable[[float, TimerEvent], None]:
 
         updated_nodes = [] if updated_nodes is None else updated_nodes
+        ttree = TrackingTree()
 
-        def wrapper(elapsed: float, time_event: TimerEvent):
-            ttree = TrackingTree()
-            states = [(node, node_attribs(node, False)) for node in updated_nodes]
-
-            callback(elapsed, time_event)
-
-            values = []
+        def diffs(states: list[dict]) -> Iterator[dict]:
             for node, old_attrib in states:
                 element_id = xpath_to_query_selector(ttree.get_path(node))
-                new_attrib = node_attribs(node, False)
+                new_attrib = node_attribs(node)
                 diff = diffdict(old_attrib, new_attrib)
                 if diff != EMPTY_DIFF:
-                    values.append({"elementId": element_id, "diff": diff})
-            self._queue.put_nowait((EventSource.PRODUCER, values))
+                    yield {"elementId": element_id, "diff": diff}
+
+        def wrapper(elapsed: float, time_event: TimerEvent):
+            states = [(node, node_attribs(node)) for node in updated_nodes]
+            callback(elapsed, time_event)
+            self._queue.put_nowait((EventSource.PRODUCER, list(diffs(states))))
 
         return wrapper
 
@@ -124,12 +124,13 @@ class EventProducers:
                 case (TimerStatus.RESTART, timer_params):
                     self._restart[id(timer_params.timer)] = timer_params
                 case (TimerStatus.STOP, timer_id):
-                    self._pending.discard(timer_id)
+                    if timer_id in self._pending:
+                        self._pending.pop(timer_id).cancel()
         if isinstance(result, int) and result in self._pending:
-            self._pending.discard(result)
+            self._pending.pop(result)
         if self._restart:
-            tasks = {
-                asyncio.create_task(
+            self._pending = {
+                id(timer_params.timer): asyncio.create_task(
                     timer_params.timer.restart(
                         self._event_builder(
                             timer_params.callback,
@@ -141,9 +142,8 @@ class EventProducers:
                 )
                 for timer_params in self._restart.values()
             }
-            self._pending |= set(self._restart.keys())
             self._restart.clear()
-            return tasks
+            return set(self._pending.values())
 
     def queue_task(self, result: Any | None = None) -> asyncio.Task | None:
         if result is None or (

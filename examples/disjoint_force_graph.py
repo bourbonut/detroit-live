@@ -1,8 +1,4 @@
 # https://observablehq.com/@d3/disjoint-force-directed-graph/2
-#    / \
-#   / | \    This example is not working for now
-#  /  o  \
-# /_______\
 import json
 from math import sqrt
 
@@ -97,7 +93,7 @@ def dragged(event, d, node):
 
 
 # Restore the target alpha so the simulation cools after dragging ends.
-# Unfix the subject position now that it’s no longer being dragged.
+# Unfix the subject position now that it's no longer being dragged.
 def dragended(event, d, node):
     if not event.active:
         simulation.set_alpha_target(0)
