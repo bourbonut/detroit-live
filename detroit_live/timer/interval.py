@@ -11,19 +11,24 @@ class Interval(Timer):
         delay: float | None = None,
         starting_time: float | None = None,
     ) -> int:
-        starting_time = now() if starting_time is None else starting_time
-        delay = 0 if delay is None else delay * 1e-3
-        difftime = (starting_time - now()) * 1e-3 + delay
-        frame_freq = 504 * 1e-6
-        if difftime > 0:
-            await asyncio.sleep(difftime)
-        self._start = now()
-        self._stop = False
-        self._callback = callback
+        try:
+            starting_time = now() if starting_time is None else starting_time
+            delay = 0 if delay is None else delay * 1e-3
+            difftime = (starting_time - now()) * 1e-3 + delay
+            frame_freq = 504 * 1e-6
+            if difftime > 0:
+                await asyncio.sleep(difftime)
 
-        while not self._stop:
-            await asyncio.sleep(frame_freq + delay)
-            self._callback((now() - self._start) * 1e3, self.stop)
+            self._start = now()
+            self._time_event = TimerEvent()
+            self._callback = callback
+
+            while not self._time_event.is_set():
+                await asyncio.sleep(frame_freq + delay)
+                self._callback((now() - self._start) * 1e3, self._time_event)
+            return id(self)
+        except asyncio.CancelledError:
+            return id(self)
 
 
 async def interval(

@@ -7,7 +7,7 @@ from typing import Any
 
 from lxml import etree
 
-from ..timer import Timer, TimerEvent
+from ..timer import Interval, Timer, TimerEvent
 from .event_source import EventSource
 from .tracking_tree import TrackingTree
 from .utils import (
@@ -137,6 +137,26 @@ class EventProducers:
             starting_time,
         )
         return TimerModifier(timer, updated_nodes, self._future_tasks)
+
+    def add_interval(
+        self,
+        callback: Callable[[float, TimerEvent], None],
+        updated_nodes: list[etree.Element] | None = None,
+        html_nodes: list[etree.Element] | None = None,
+        delay: float | None = None,
+        starting_time: float | None = None,
+    ) -> TimerModifier:
+        interval = Interval()
+        timer_id = id(interval)
+        self._restart[timer_id] = TimerParameters(
+            interval,
+            callback,
+            updated_nodes,
+            html_nodes,
+            delay,
+            starting_time,
+        )
+        return TimerModifier(interval, updated_nodes, self._future_tasks)
 
     def remove_timer(self, timer_modifier: TimerModifier):
         self._restart.pop(id(timer_modifier._timer))

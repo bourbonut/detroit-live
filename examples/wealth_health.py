@@ -194,7 +194,6 @@ def update(elapsed, timer_event):
     if date == 2006:
         timer_event.set()
     else:
-        time.sleep(0.017)
         current_data = data_at(datetime(date, 1, 1))
         (
             circle.data(current_data, lambda d: d.name)
@@ -204,9 +203,10 @@ def update(elapsed, timer_event):
         )
         span.text(f"Year: {date}")
 
-d3live.event_producers().add_timer(
+d3live.event_producers().add_interval(
     update,
     updated_nodes=circle.nodes() + span.nodes(),
     html_nodes=span.nodes(),
+    delay=40,
 )
 html.create_app().run()

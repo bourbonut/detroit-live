@@ -225,8 +225,10 @@ def move(event, _, node):
 
 
 svg.on(
-    "mousemove click", move, extra_nodes=quad.nodes() + point.nodes() + circle.nodes()
-)  # mousemove
+    "mousemove click",
+    move,
+    extra_nodes=quad.nodes() + point.nodes() + circle.nodes()
+)
 move(None, None, None)
 
 html.create_app().run()
