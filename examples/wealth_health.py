@@ -1,13 +1,14 @@
-import requests
+import json
+import time
+from bisect import bisect_left
+from collections import namedtuple
 from dataclasses import dataclass
 from datetime import datetime
-from collections import namedtuple
-import detroit_live as d3live
-from bisect import bisect_left
-import detroit as d3
 from operator import itemgetter
-import time
-import json
+
+import detroit as d3
+import detroit_live as d3live
+import requests
 
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
 
@@ -31,6 +32,7 @@ class Data:
     population: list[tuple[datetime, float]] | float | None
     life_expectancy: list[tuple[datetime, float]] | float | None
 
+
 data = [
     Data(
         d.get("name"),
@@ -46,8 +48,10 @@ width = 928
 height = 560
 margin = Margin(20, 20, 35, 40)
 
+
 def data_index(d, index):
     return [d.income[index], d.population[index], d.life_expectancy[index]]
+
 
 interval = d3.time_month
 dates = interval.range(
@@ -157,11 +161,7 @@ def y_axis(g):
 
 html = d3live.create("html")
 body = html.append("body")
-svg = (
-    body.append("div")
-    .append("svg")
-    .attr("viewBox", [0, 0, width, height])
-)
+svg = body.append("div").append("svg").attr("viewBox", [0, 0, width, height])
 
 svg.append("g").call(x_axis)
 svg.append("g").call(y_axis)
@@ -188,6 +188,7 @@ circle = (
 date = 1801
 span = body.insert("div", "svg").append("span").text(f"Year: {date}")
 
+
 def update(elapsed, timer_event):
     global date
     date += 1
@@ -202,6 +203,7 @@ def update(elapsed, timer_event):
             .attr("r", lambda d: radius(d.population))
         )
         span.text(f"Year: {date}")
+
 
 d3live.event_producers().add_interval(
     update,
