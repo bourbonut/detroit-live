@@ -78,6 +78,7 @@ class EventListener:
     target : str
         Target
     """
+
     typename: str
     name: str
     listener: ContextListener
@@ -112,6 +113,7 @@ class EventListenersGroup:
     event_type : str
         Event type
     """
+
     def __init__(self, typename: str):
         self.event: type[Event] = parse_event(typename)
         self.event_type: str = self.event.__name__
@@ -135,10 +137,9 @@ class EventListenersGroup:
             Event listener object
         """
         node, typename, name = key
-        (
-            self._event_listeners.setdefault(typename, {})
-            .setdefault(node, {})
-        )[name] = event_listener
+        (self._event_listeners.setdefault(typename, {}).setdefault(node, {}))[name] = (
+            event_listener
+        )
 
     def get(self, key: tuple[etree.Element, str, str]) -> EventListener | None:
         """
@@ -340,6 +341,7 @@ class EventListeners:
     """
     Collection of event listeners mapped by event types.
     """
+
     def __init__(self):
         self._event_listeners: dict[str, EventListenersGroup] = {}
 
@@ -383,7 +385,7 @@ class EventListeners:
         ----------
         event : dict[str, Any]
             Event received by the websocket
-            
+
         Returns
         -------
         Iterator[list[dict[str, Any]]]

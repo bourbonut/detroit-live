@@ -1430,7 +1430,9 @@ class LiveSelection(Selection[T]):
             if queue_task := _event_producers.queue_task():
                 pending.add(queue_task)
             while True:
-                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
                 queue_added = False
                 for task in done:
                     result = task.result()
@@ -1443,7 +1445,7 @@ class LiveSelection(Selection[T]):
                     elif isinstance(result, tuple):
                         source, values = result
                         await websocket.send(orjson.dumps(values))
-                    
+
                     if next_tasks := _event_producers.next_tasks(result):
                         pending.update(next_tasks)
                     if not queue_added:

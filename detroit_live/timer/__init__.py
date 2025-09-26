@@ -1,6 +1,6 @@
 from .interval import Interval, interval
 from .timeout import timeout
-from .timer import now, Timer, TimerEvent, timer
+from .timer import Timer, TimerEvent, now, timer
 
 __all__ = [
     "Interval",

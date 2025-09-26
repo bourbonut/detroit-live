@@ -6,8 +6,8 @@ from detroit.types import SimulationNode
 from lxml import etree
 
 from ..dispatch import dispatch
-from ..timer import TimerEvent
 from ..events import _event_producers
+from ..timer import TimerEvent
 
 TLiveForceSimulation = TypeVar("LiveForceSimulation", bound="LiveForceSimulation")
 

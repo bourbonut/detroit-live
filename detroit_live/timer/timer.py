@@ -2,6 +2,7 @@ import asyncio
 import time
 from collections.abc import Callable
 
+
 def now() -> float:
     """
     Returns the current time as defined by `time.perf_counter()`.
@@ -33,6 +34,7 @@ class TimerEvent:
 
     def clear(self):
         self.__is_set = False
+
 
 class Timer:
     def __init__(self):

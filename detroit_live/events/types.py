@@ -16,7 +16,7 @@ def snake_to_camel(string: str) -> str:
     Returns
     -------
     str
-       Converted string 
+       Converted string
     """
     strings = string.split("_")
     return "".join(strings[:1] + [word.title() for word in strings[1:]])

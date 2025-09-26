@@ -1,5 +1,6 @@
 from enum import Enum, auto
 
+
 class EventSource(Enum):
-    PRODUCER = auto() 
+    PRODUCER = auto()
     WEBSOCKET = auto()

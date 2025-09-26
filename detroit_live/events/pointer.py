@@ -1,5 +1,5 @@
-import re
 import logging
+import re
 from typing import Optional
 
 from lxml import etree
@@ -9,6 +9,7 @@ from .types import MouseEvent, WheelEvent
 TRANSFORM_PATTERN = re.compile(r"(translate|scale)\(([^)]+)\)")
 
 log = logging.getLogger(__name__)
+
 
 def pointer(
     event: MouseEvent | WheelEvent, node: Optional[etree.Element] = None

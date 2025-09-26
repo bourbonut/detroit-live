@@ -698,16 +698,16 @@ class Zoom:
             dl = dlx * dlx + dly * dly
             t = self._scale(t, sqrt(dp / dl))
             p = [(p0[0] + p1[0]) * 0.5, (p0[1] + p1[1]) * 0.5]
-            l = [(l0[0] + l1[0]) * 0.5, (l0[1] + l1[1]) * 0.5]
+            q = [(l0[0] + l1[0]) * 0.5, (l0[1] + l1[1]) * 0.5]
         elif g.touch0:
             p = g.touch0[0]
-            l = g.touch0[1]
+            q = g.touch0[1]
         else:
             return
 
         g.zoom(
             "touch",
-            self._constrain(self._translate(t, p, l), g.extent, self._translate_extent),
+            self._constrain(self._translate(t, p, q), g.extent, self._translate_extent),
         )
 
     def _touch_ended(self, event: Event, d: T | None, node: etree.Element):

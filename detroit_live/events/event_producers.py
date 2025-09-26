@@ -1,11 +1,12 @@
 import asyncio
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from enum import Enum, auto
 from queue import Queue
 from typing import Any
-from dataclasses import dataclass
-from collections.abc import Callable
+
 from lxml import etree
+
 from ..timer import Timer, TimerEvent
 from .event_source import EventSource
 from .tracking_tree import TrackingTree
@@ -82,7 +83,6 @@ class EventProducers:
         callback: Callable[[float, TimerEvent], None],
         updated_nodes: list[etree.Element] | None,
     ) -> Callable[[float, TimerEvent], None]:
-
         updated_nodes = [] if updated_nodes is None else updated_nodes
         ttree = TrackingTree()
 
@@ -133,11 +133,10 @@ class EventProducers:
                 id(timer_params.timer): asyncio.create_task(
                     timer_params.timer.restart(
                         self._event_builder(
-                            timer_params.callback,
-                            timer_params.updated_nodes
+                            timer_params.callback, timer_params.updated_nodes
                         ),
                         timer_params.delay,
-                        timer_params.starting_time
+                        timer_params.starting_time,
                     )
                 )
                 for timer_params in self._restart.values()
@@ -146,9 +145,8 @@ class EventProducers:
             return set(self._pending.values())
 
     def queue_task(self, result: Any | None = None) -> asyncio.Task | None:
-        if result is None or (
-            isinstance(result, (int, tuple)) and self._pending
-        ):
+        if result is None or (isinstance(result, (int, tuple)) and self._pending):
             return asyncio.create_task(self._queue.get())
+
 
 _event_producers = EventProducers()
