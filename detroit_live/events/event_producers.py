@@ -71,12 +71,23 @@ class TimerModifier:
         self._future_tasks.put((TimerStatus.STOP, id(self._timer)))
 
 
-class EventProducers:
+class SharedState:
     def __init__(self):
-        self._queue = asyncio.Queue()
-        self._restart = {}
-        self._pending = set()
-        self._future_tasks = Queue()
+        self.queue = asyncio.Queue()
+        self.restart = {}
+        self.pending = set()
+        self.future_tasks = Queue()
+
+
+class EventProducers:
+
+    _shared_state = SharedState()
+
+    def __init__(self):
+        self._queue = self._shared_state.queue
+        self._restart = self._shared_state.restart
+        self._pending = self._shared_state.pending
+        self._future_tasks = self._shared_state.future_tasks
 
     def _event_builder(
         self,

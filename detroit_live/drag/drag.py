@@ -37,7 +37,7 @@ def default_container(
 def default_touchable(selection: LiveSelection) -> Accessor[T, bool]:
     def touchable(d: T, i: int, group: list[etree.Element]) -> bool:
         target = group[i]
-        for event_listener in selection._events.values():
+        for event_listener in selection._event_listeners.values():
             if len(event_listener.search(target, "touchstart")):
                 return True
         return False

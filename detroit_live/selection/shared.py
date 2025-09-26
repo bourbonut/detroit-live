@@ -2,14 +2,15 @@ from typing import Generic
 
 from lxml import etree
 
-from ..events import EventListeners, TrackingTree
+from ..events import EventListeners, TrackingTree, EventProducers
 from ..types import T
 
 
 class SharedState(Generic[T]):
     def __init__(self):
         self.data: dict[etree.Element, T] = {}
-        self.events: EventListeners = EventListeners()
+        self.event_listeners: EventListeners = EventListeners()
+        self.event_producers: EventProducers = EventProducers()
         self.tree: TrackingTree = TrackingTree()
 
     def set_tree_root(self, nodes: list[etree.Element]):

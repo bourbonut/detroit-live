@@ -6,7 +6,7 @@ from detroit.types import SimulationNode
 from lxml import etree
 
 from ..dispatch import dispatch
-from ..events import _event_producers
+from ..events import EventProducers
 from ..timer import TimerEvent
 
 TLiveForceSimulation = TypeVar("LiveForceSimulation", bound="LiveForceSimulation")
@@ -16,7 +16,8 @@ class LiveForceSimulation(ForceSimulation):
     def __init__(self, nodes: list[SimulationNode]):
         super().__init__(nodes)
         self._event = dispatch("tick", "end")
-        self._stepper = _event_producers.add_timer(self._step)
+        self._event_producers = EventProducers()
+        self._stepper = self._event_producers.add_timer(self._step)
 
     def _step(self, elapsed: float, timer_event: TimerEvent):
         self.tick()
@@ -98,8 +99,8 @@ class LiveForceSimulation(ForceSimulation):
         velocities inside a tick event listener.
         """
         self._event.on(typename, listener)
-        _event_producers.remove_timer(self._stepper)
-        self._stepper = _event_producers.add_timer(self._step, extra_nodes)
+        self._event_producers.remove_timer(self._stepper)
+        self._stepper = self._event_producers.add_timer(self._step, extra_nodes)
         return self
 
 
