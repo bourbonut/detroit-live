@@ -39,6 +39,7 @@ class TimerParameters:
     timer: Timer
     callback: Callable[[float, TimerEvent], None]
     updated_nodes: list[etree.Element]
+    html_nodes: list[etree.Element]
     delay: float | None
     starting_time: float | None
 
@@ -93,20 +94,25 @@ class EventProducers:
         self,
         callback: Callable[[float, TimerEvent], None],
         updated_nodes: list[etree.Element] | None,
+        html_nodes: list[etree.Element] | None,
     ) -> Callable[[float, TimerEvent], None]:
         updated_nodes = [] if updated_nodes is None else updated_nodes
+        html_nodes = set() if html_nodes is None else set(html_nodes)
         ttree = TrackingTree()
 
         def diffs(states: list[dict]) -> Iterator[dict]:
             for node, old_attrib in states:
                 element_id = xpath_to_query_selector(ttree.get_path(node))
-                new_attrib = node_attribs(node)
+                new_attrib = node_attribs(node, node in html_nodes)
                 diff = diffdict(old_attrib, new_attrib)
                 if diff != EMPTY_DIFF:
                     yield {"elementId": element_id, "diff": diff}
 
         def wrapper(elapsed: float, time_event: TimerEvent):
-            states = [(node, node_attribs(node)) for node in updated_nodes]
+            states = [
+                (node, node_attribs(node, node in html_nodes))
+                for node in updated_nodes
+            ]
             callback(elapsed, time_event)
             self._queue.put_nowait((EventSource.PRODUCER, list(diffs(states))))
 
@@ -116,13 +122,19 @@ class EventProducers:
         self,
         callback: Callable[[float, TimerEvent], None],
         updated_nodes: list[etree.Element] | None = None,
+        html_nodes: list[etree.Element] | None = None,
         delay: float | None = None,
         starting_time: float | None = None,
     ) -> TimerModifier:
         timer = Timer()
         timer_id = id(timer)
         self._restart[timer_id] = TimerParameters(
-            timer, callback, updated_nodes, delay, starting_time
+            timer,
+            callback,
+            updated_nodes,
+            html_nodes,
+            delay,
+            starting_time,
         )
         return TimerModifier(timer, updated_nodes, self._future_tasks)
 
@@ -144,7 +156,9 @@ class EventProducers:
                 id(timer_params.timer): asyncio.create_task(
                     timer_params.timer.restart(
                         self._event_builder(
-                            timer_params.callback, timer_params.updated_nodes
+                            timer_params.callback,
+                            timer_params.updated_nodes,
+                            timer_params.html_nodes,
                         ),
                         timer_params.delay,
                         timer_params.starting_time,
@@ -159,5 +173,5 @@ class EventProducers:
         if result is None or (isinstance(result, (int, tuple)) and self._pending):
             return asyncio.create_task(self._queue.get())
 
-
-_event_producers = EventProducers()
+def event_producers() -> EventProducers:
+    return EventProducers()
