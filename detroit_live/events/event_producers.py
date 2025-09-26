@@ -53,8 +53,7 @@ class TimerModifier:
         delay: float | None = None,
         starting_time: float | None = None,
     ):
-        self._timer.stop()
-        self._future_tasks.put((TimerStatus.STOP, id(self._timer)))
+        self.stop()
         self._timer = Timer()
         self._future_tasks.put(
             (

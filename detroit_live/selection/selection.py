@@ -1450,7 +1450,6 @@ class LiveSelection(Selection[T]):
                         if queue := _event_producers.queue_task(result):
                             queue_added = True
                             pending.add(queue)
-                        
 
         @app.route("/")
         async def index():

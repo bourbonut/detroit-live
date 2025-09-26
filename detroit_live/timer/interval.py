@@ -14,6 +14,7 @@ class Interval(Timer):
         starting_time = now() if starting_time is None else starting_time
         delay = 0 if delay is None else delay * 1e-3
         difftime = (starting_time - now()) * 1e-3 + delay
+        frame_freq = 504 * 1e-6
         if difftime > 0:
             await asyncio.sleep(difftime)
         self._start = now()
@@ -21,7 +22,7 @@ class Interval(Timer):
         self._callback = callback
 
         while not self._stop:
-            await asyncio.sleep(0.017 + delay)
+            await asyncio.sleep(frame_freq + delay)
             self._callback((now() - self._start) * 1e3, self.stop)
 
 

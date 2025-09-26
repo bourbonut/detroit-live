@@ -77,41 +77,40 @@ def tick(simulation):
         .attr("x2", lambda d: d["target"]["x"])
         .attr("y2", lambda d: d["target"]["y"])
     )
-    (node.attr("cx", lambda d: d["x"]).attr("cy", lambda d: d["y"]))
-    # print("TICK")
+    node.attr("cx", lambda d: d["x"]).attr("cy", lambda d: d["y"])
 
 
 simulation.on("tick", tick, extra_nodes=link.nodes() + node.nodes())
 
-# # Reheat the simulation when drag starts, and fix the subject position.
-# def dragstarted(event, d, node):
-#     if not event.active:
-#         simulation.set_alpha_target(0.3).restart()
-#     event["subject"]["fx"] = event["subject"]["x"]
-#     event["subject"]["fy"] = event["subject"]["y"]
-#
-#
-# # Update the subject (dragged node).osition during drag.
-# def dragged(event, d, node):
-#     event["subject"]["fx"] = event.x
-#     event["subject"]["fy"] = event.y
-#
-#
-# # Restore the target alpha so the simulation cools after dragging ends.
-# # Unfix the subject position now that it’s no longer being dragged.
-# def dragended(event, d, node):
-#     if not event.active:
-#         simulation.set_alpha_target(0)
-#     event["subject"]["fx"] = None
-#     event["subject"]["fy"] = None
-#
-#
-# # Add a drag behavior.
-# node.call(
-#     d3live.drag()
-#     .on("start", dragstarted)
-#     .on("drag", dragged)
-#     .on("end", dragended)
-# )
+# Reheat the simulation when drag starts, and fix the subject position.
+def dragstarted(event, d, node):
+    if not event.active:
+        simulation.set_alpha_target(0.3).restart()
+    event["subject"]["fx"] = event["subject"]["x"]
+    event["subject"]["fy"] = event["subject"]["y"]
+
+
+# Update the subject (dragged node).osition during drag.
+def dragged(event, d, node):
+    event["subject"]["fx"] = event.x
+    event["subject"]["fy"] = event.y
+
+
+# Restore the target alpha so the simulation cools after dragging ends.
+# Unfix the subject position now that it’s no longer being dragged.
+def dragended(event, d, node):
+    if not event.active:
+        simulation.set_alpha_target(0)
+    event["subject"]["fx"] = None
+    event["subject"]["fy"] = None
+
+
+# Add a drag behavior.
+node.call(
+    d3live.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended)
+)
 
 svg.create_app().run()
