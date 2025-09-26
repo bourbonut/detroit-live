@@ -1,5 +1,5 @@
+# Source: https://observablehq.com/@mbostock/the-wealth-health-of-nations
 import json
-import time
 from bisect import bisect_left
 from collections import namedtuple
 from dataclasses import dataclass
