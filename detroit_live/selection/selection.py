@@ -610,6 +610,42 @@ class LiveSelection(Selection[T]):
             exit=selection._exit,
         )
 
+    def property(
+        self, name: str, value: Accessor[T, Any] | list[Any] | Any | None = None
+    ) -> TLiveSelection:
+        """
+        This method has no difference with :code:`Selection.attr`.
+
+        Parameters
+        ----------
+        name : str
+            Name of the property
+        value : Accessor[T, Any] | list[Any] | Any | None
+            Property value function or constant property value. The final value
+            is converted to a string.
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        >>> import detroit as d3
+        >>> svg = d3.create("svg")
+        >>> print(
+        ...     svg.append("g")
+        ...     .property("class", "labels")
+        ...     .property("transform", "translate(20, 10)")
+        ...     .to_string()
+        ... )
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <g class="labels" transform="translate(20, 10)"/>
+        </svg>
+        """
+        return self.attr(name, value)
+
     def style(
         self, name: str, value: Accessor[T, str] | str | None = None
     ) -> TLiveSelection:
@@ -701,6 +737,104 @@ class LiveSelection(Selection[T]):
 
         """
         selection = super().text(value)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+        )
+
+    def html(self, value: Accessor[T, Any] | Any | None = None) -> TLiveSelection:
+        """
+        This method has no difference with :code:`Selection.text`.
+
+        Parameters
+        ----------
+        value : Accessor[T, Any] | Any | None
+            Inner HTML function or constant inner HTML. The final value is
+            converted to a string.
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        Direct assignment:
+
+        >>> import detroit as d3
+        >>> svg = d3.create("svg")
+        >>> print(svg.append("text").html("Hello, world!").to_string())
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <text>Hello, world!</text>
+        </svg>
+
+        Through data:
+
+        >>> import detroit as d3
+        >>> svg = d3.create("svg")
+        >>> print(
+        ...     svg.select_all("text")
+        ...     .data(["Hello", "world"])
+        ...     .enter()
+        ...     .append("text")
+        ...     .html(lambda text, i: f"{text} - index {i}")
+        ...     .to_string()
+        ... )
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <text>Hello - index 0</text>
+          <text>world - index 1</text>
+        </svg>
+        """
+        return self.text(value)
+
+    def classed(
+        self,
+        names: str,
+        value: Accessor[T, bool] | bool | None = None
+    ) -> TLiveSelection:
+        """
+        Assigns or unassigns the specified CSS class names on the selected
+        elements by setting the class attribute or modifying the class list
+        property and returns this selection.
+
+        Parameters
+        ----------
+        names : str
+            Class names
+        value : Accessor[T, bool] | bool | None
+            Boolean function or constant boolean where the boolean indicates if
+            the class names must be added or removed from the class property of
+            the node.
+
+        Returns
+        -------
+        LiveSelection
+            Itself
+
+        Examples
+        --------
+
+        >>> import detroit as d3
+        >>> svg = d3.create("svg")
+        >>> data = ["Hello", "world"]
+        >>> (
+        ...    svg.select_all()
+        ...    .data(data)
+        ...    .enter()
+        ...    .append("g")
+        ...    .classed("myclass", lambda d: d == "Hello")
+        ... )
+        Selection(
+            groups=[[g.myclass, g]],
+            parents=[svg],
+        )
+        >>> str(svg)
+        '<svg xmlns="http://www.w3.org/2000/svg"><g class="myclass"/><g/></svg>'
+        """
+        selection = super().classed(names, value)
         return LiveSelection(
             selection._groups,
             selection._parents,
@@ -1203,7 +1337,12 @@ class LiveSelection(Selection[T]):
             Clone of itself
         """
         selection = super().clone()
-        return LiveSelection(selection._groups, selection._parents)
+        return LiveSelection(
+            selection._groups,
+            selection._parents,
+            enter=selection._enter,
+            exit=selection._exit,
+        )
 
     def node(self) -> etree.Element:
         """
