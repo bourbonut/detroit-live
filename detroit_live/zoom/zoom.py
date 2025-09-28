@@ -390,7 +390,7 @@ class Zoom:
 
         self.transform(selection, transform, p, event)
 
-    def transform_by(
+    def translate_by(
         self,
         selection: LiveSelection,
         x: EtreeFunction[T, float] | float,
@@ -430,7 +430,7 @@ class Zoom:
             group: list[etree.Element],
         ) -> Transform:
             return self._constrain(
-                self._zoom[node].translate(
+                self._shared.get_zoom(node).translate(
                     x(node, d, i, group) if callable(x) else x,
                     y(node, d, i, group) if callable(y) else y,
                 ),

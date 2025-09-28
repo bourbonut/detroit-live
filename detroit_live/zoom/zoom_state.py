@@ -2,7 +2,7 @@ from typing import TypeVar
 
 from lxml import etree
 
-from .transform import Transform
+from .transform import Transform, identity
 
 Gesture = TypeVar("Gesture", bound="Gesture")
 
@@ -32,3 +32,12 @@ class ZoomState:
 
 
 _zoom_state = ZoomState()
+
+def zoom_transform(node: etree.Element) -> Transform:
+    transform = _zoom_state.get_zoom(node)
+    while transform is None:
+        node = node.getparent()
+        if node is None:
+            return identity
+        transform = _zoom_state.get_zoom(node)
+    return transform
