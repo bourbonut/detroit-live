@@ -1,9 +1,11 @@
+from datetime import datetime
 from typing import Union
 
-import detroit as d3
 import pytest
-from detroit.selection.enter import EnterNode
 from lxml import etree
+
+import detroit as d3
+from detroit.selection.enter import EnterNode
 
 
 @pytest.fixture
@@ -534,7 +536,6 @@ def test_selection_40():
     assert box[2] == 3
 
 
-@pytest.mark.skip
 def test_selection_41():
     svg = d3.create("svg")
     svg2 = svg.clone()
@@ -640,16 +641,74 @@ def test_selection_48():
     assert text.style("stroke") == "white"
     assert text.attr("style") == "fill:blue;stroke:white;"
 
-
 def test_selection_49():
     svg = d3.create("svg")
 
     svg.attr("viewBox", [0, 0, 100, 200])
     assert svg.attr("viewBox") == "0 0 100 200"
 
-
 def test_selection_50():
     svg = d3.create("svg")
 
     svg.attr("viewBox", lambda: [0, 0, 100, 200])
     assert svg.attr("viewBox") == "0 0 100 200"
+
+def test_selection_51():
+    svg = d3.create("svg").append("g").attr("class", "main")
+    g1 = svg.append("g").attr("class", "tick")
+    text1 = g1.append("text").text(258)
+    g2 = svg.append("g").attr("class", "tick")
+    text2 = g2.append("text").text(284)
+
+    assert text1.text() == "258"
+    assert text2.text() == "284"
+
+def test_selection_52():
+    d1 = datetime(2001, 1, 1)
+    d2 = datetime(2003, 1, 1)
+    svg = d3.create("svg").append("g").attr("class", "main")
+    g1 = svg.append("g").attr("class", "tick")
+    text1 = g1.append("text").text(lambda: d1)
+    g2 = svg.append("g").attr("class", "tick")
+    text2 = g2.append("text").text(lambda: d2)
+
+    assert text1.text() == str(d1)
+    assert text2.text() == str(d2)
+
+def test_selection_53():
+    data = ["hello", "world"]
+    svg = d3.create("svg")
+    text = svg.select_all("text").data(data)
+    text_enter1 = text.enter()
+    text_enter2 = text_enter1.clone()
+    assert len(text_enter1._data) == len(text_enter2._data)
+    assert len(text_enter1._data.keys() & text_enter2._data.keys()) == 0
+    for enter_node1, enter_node2 in zip(text_enter1.nodes(), text_enter2.nodes()):
+        assert enter_node1 != enter_node2
+
+def test_selection_54():
+    data = ["Hello", "world"]
+    svg = d3.create("svg")
+    g1 = svg.append("g")
+    g2 = svg.append("g")
+    (
+        svg.select_all("g")
+        .data(data)
+        .classed("foo", lambda d: d == "Hello")
+        .classed("bar", True)
+        .classed("foo-bar", False)
+    )
+    assert g1.classed("foo") is True
+    assert g2.classed("foo") is False
+
+    assert g1.classed("foo bar") is True
+    assert g2.classed("foo bar") is False
+
+    assert g1.classed("bar") is True
+    assert g2.classed("bar") is True
+
+    assert g1.classed("foo-bar") is False
+    assert g2.classed("foo-bar") is False
+
+    assert g1.node().get("class") == "foo bar"
+    assert g2.node().get("class") == "bar"
