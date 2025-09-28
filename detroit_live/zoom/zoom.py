@@ -275,7 +275,6 @@ class Zoom:
         if collection != selection:
             self._schedule(collection, transform, point, event)
         else:
-
             def each_func(
                 node: etree.Element, d: T, i: int, group: list[etree.Element]
             ):

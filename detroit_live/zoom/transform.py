@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import Any, TypeVar
 
 TTransform = TypeVar("Transform", bound="Transform")
 
@@ -11,6 +11,15 @@ class Transform:
 
     def __call__(self, point: tuple[float, float]) -> tuple[float, float]:
         return [point[0] * self.k + self.x, point[1] * self.k + self.y]
+
+    def __eq__(self, o: Any) -> bool:
+        if isinstance(o, Transform):
+            return (
+                self.k == o.k
+                and self.x == o.x
+                and self.y == o.y
+            )
+        return False
 
     def scale(self, k: float) -> TTransform:
         return self if k == 1 else Transform(self.k * k, self.x, self.y)
@@ -35,7 +44,7 @@ class Transform:
         return (x - self.x) / self.k
 
     def invert_y(self, y: float) -> float:
-        return (y - self.y) / self.y
+        return (y - self.y) / self.k
 
     def rescale_x(self, x):
         # TODO

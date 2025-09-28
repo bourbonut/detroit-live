@@ -9,6 +9,10 @@ from .timer import (
     timeout,
     timer,
 )
+from .zoom import (
+    zoom_identity,
+    zoom_transform,
+)
 from .zoom import Zoom as zoom
 
 __all__ = [
@@ -24,4 +28,6 @@ __all__ = [
     "timeout",
     "timer",
     "zoom",
+    "zoom_identity",
+    "zoom_transform",
 ]
