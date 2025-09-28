@@ -1,11 +1,11 @@
 import detroit_live as d3
+from detroit_live.events.tracking_tree import TrackingTree
 
 def test_zoom_event_1():
     div = d3.create("div").datum("hello")
+    ttree = TrackingTree()
+    ttree.set_root(div.node())
     z = d3.zoom()
-    div.call(z)
-    div.call(z.transform, d3.zoom_identity, None, None)
-
     event = {
         "x": 150,
         "y": 250,
@@ -32,7 +32,7 @@ def test_zoom_event_1():
     def filter_func(*args):
         a[0] = list(args)
 
-    z.on("zoom", callback).set_filter(filter_func)
+    div.call(z.on("zoom", callback).set_filter(filter_func))
     list(div._event_listeners(event))
     assert a[0][0].element_id == "div"
     assert a[0][1] == "hello"
