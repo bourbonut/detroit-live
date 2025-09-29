@@ -126,8 +126,8 @@ class LiveSelection(Selection[T]):
     ):
         super().__init__(groups, parents, enter, exit, self._shared.data)
         self._shared.set_tree_root(self._parents)
-        self._event_listeners = self._shared.event_listeners
-        self._event_producers = self._shared.event_producers
+        self.event_listeners = self._shared.event_listeners
+        self.event_producers = self._shared.event_producers
         self._tree = self._shared.tree
 
     def select(self, selection: str | None = None) -> TLiveSelection:
@@ -1470,10 +1470,10 @@ class LiveSelection(Selection[T]):
         typenames = list(parse_typenames(typename))
 
         on = (
-            on_remove(self._event_listeners)
+            on_remove(self.event_listeners)
             if listener is None
             else on_add(
-                self._event_listeners,
+                self.event_listeners,
                 listener,
                 self._data.get,
                 extra_nodes,
@@ -1507,7 +1507,7 @@ class LiveSelection(Selection[T]):
         LiveSelection
             Itself
         """
-        set_event = set_active(self._event_listeners, active)
+        set_event = set_active(self.event_listeners, active)
         typenames = list(parse_typenames(typename))
         nodes = [node for group in self._groups for node in group]
         for node in filter(lambda n: n is not None, nodes):
@@ -1560,14 +1560,18 @@ class LiveSelection(Selection[T]):
             level=logging.WARNING,
         )
         app = App("detroit-live" if name is None else name)
-        script = self._event_listeners.into_script(host, port)
+        script = self.event_listeners.into_script(host, port)
 
         @app.websocket("/ws")
         async def ws():
+            # Create pending asynchronous tasks
+            # Websocket task
             pending = {asyncio.create_task(websocket.receive())}
-            if next_tasks := self._event_producers.next_tasks():
+            # Timer tasks for starting event producers (timers)
+            if next_tasks := self.event_producers.next_tasks():
                 pending.update(next_tasks)
-            if queue_task := self._event_producers.queue_task():
+            # Queue task to gather updated node changes
+            if queue_task := self.event_producers.queue_task():
                 pending.add(queue_task)
             while True:
                 done, pending = await asyncio.wait(
@@ -1576,20 +1580,23 @@ class LiveSelection(Selection[T]):
                 queue_added = False
                 for task in done:
                     result = task.result()
+                    # Result from websocket task
                     if isinstance(result, str):
                         event = orjson.loads(result)
-                        for json in self._event_listeners(event):
+                        for json in self.event_listeners(event):
                             await websocket.send(orjson.dumps(json))
                         pending.add(asyncio.create_task(websocket.receive()))
                         result = None
+                    # Result from event producers (timers)
                     elif isinstance(result, tuple):
-                        source, values = result
+                        _source, values = result
                         await websocket.send(orjson.dumps(values))
 
-                    if next_tasks := self._event_producers.next_tasks(result):
+                    # Updates next tasks and queue tasks from event producers
+                    if next_tasks := self.event_producers.next_tasks(result):
                         pending.update(next_tasks)
                     if not queue_added:
-                        if queue := self._event_producers.queue_task(result):
+                        if queue := self.event_producers.queue_task(result):
                             queue_added = True
                             pending.add(queue)
 
