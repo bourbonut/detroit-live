@@ -96,6 +96,9 @@ async def test_create_app_6(monkeypatch):
     def mock_call(self, event):
         yield "Success"
     monkeypatch.setattr(EventListeners, "__call__", mock_call)
+    def mock_queue_task(self, result=None):
+        return
+    monkeypatch.setattr(EventProducers, "queue_task", mock_queue_task)
     svg = d3.create("svg")
     app = svg.create_app()
     client = app.test_client()
@@ -103,6 +106,9 @@ async def test_create_app_6(monkeypatch):
         await test_websocket.send(orjson.dumps(json).decode())
         result = await test_websocket.receive()
     assert result.decode() == '"Success"'
+    event_producers = d3.event_producers()
+    for task in event_producers._pending.values():
+        task.cancel()
 
 @pytest.mark.asyncio
 async def test_create_app_7(monkeypatch):

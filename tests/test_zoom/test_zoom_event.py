@@ -33,7 +33,7 @@ def test_zoom_event_1():
         a[0] = list(args)
 
     div.call(z.on("zoom", callback).set_filter(filter_func))
-    list(div._event_listeners(event))
+    list(div.event_listeners(event))
     assert a[0][0].element_id == "div"
     assert a[0][1] == "hello"
     assert b[0] is None
@@ -41,9 +41,9 @@ def test_zoom_event_1():
     def filter_func(*args):
         return True
     z.set_filter(filter_func)
-    list(div._event_listeners(event))
+    list(div.event_listeners(event))
     event["typename"] = "mousemove"
-    list(div._event_listeners(event))
+    list(div.event_listeners(event))
     assert b[0] is not None
 
 def test_zoom_event_2():
@@ -76,5 +76,5 @@ def test_zoom_event_2():
     z.set_filter(filter_func).set_extent(extent_func)
     div.call(z)
     div.call(z.transform, d3.zoom_identity, None, None)
-    list(div._event_listeners(event))
+    list(div.event_listeners(event))
     assert a[0][0] == div.node()
