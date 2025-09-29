@@ -38,7 +38,7 @@ class TimerEvent:
 
 class Timer:
     def __init__(self):
-        self._time_event = None
+        self._time_event = TimerEvent()
         self._callback = None
         self._start = None
 

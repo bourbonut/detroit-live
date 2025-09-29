@@ -148,8 +148,8 @@ class SharedState:
         Updated node attributes to send to the websocket
     restart : dict[int, TimerParameters]
         Tasks to restart
-    pending : set[int]
-        Set of pending task ids
+    pending : dict[int, asyncio.Task]
+        Mapping between timer ids and timer tasks
     future_tasks : Queue[tuple[TimerStatus, TimerParameters | int]]
         Restart and stop events from :code:`TimerModifier`
     """
@@ -157,7 +157,7 @@ class SharedState:
     def __init__(self):
         self.queue = asyncio.Queue()
         self.restart = {}
-        self.pending = set()
+        self.pending = {}
         self.future_tasks = Queue()
 
 
@@ -310,13 +310,15 @@ class EventProducers:
         """
         self._restart.pop(id(timer_modifier._timer))
 
-    def next_tasks(self, result: Any | None = None) -> set[asyncio.Task] | None:
+    def next_tasks(self, timer_id: int | None = None) -> set[asyncio.Task] | None:
         """
-        Returns the next tasks to await given the last result.
+        Returns the next tasks to await if some new tasks have to be (re)started.
+        Removes the :code:`timer_id` of pending tasks if the specified value is
+        valid.
 
         Parameters
         ----------
-        result : Any | None
+        result : int | None
             Last result
 
         Returns
@@ -329,10 +331,12 @@ class EventProducers:
                 case (TimerStatus.RESTART, timer_params):
                     self._restart[id(timer_params.timer)] = timer_params
                 case (TimerStatus.STOP, timer_id):
+                    if timer_id in self._restart:
+                        self._restart.pop(timer_id)
                     if timer_id in self._pending:
                         self._pending.pop(timer_id).cancel()
-        if isinstance(result, int) and result in self._pending:
-            self._pending.pop(result)
+        if isinstance(timer_id, int) and timer_id in self._pending:
+            self._pending.pop(timer_id)
         if self._restart:
             self._pending = {
                 id(timer_params.timer): asyncio.create_task(
