@@ -69,15 +69,28 @@ class TimerModifier:
     """
     Class which holds a :code:`Timer` and supplies :code:`restart` and
     :code:`stop` methods applied on the timer object.
+    Also future tasks and stopped tasks information are shared to
+    :code:`EventProducers` when calling these methods.
+
+    Parameters
+    ----------
+    updated_nodes : list[etree.Element] | None
+        Nodes to update when the timer callback is called
+    html_nodes : list[etree.Element] | None
+        Same as :code:`updated_nodes` but update the :code:`innerHTML` as well
+    future_tasks : Queue[tuple[TimerStatus, TimerParameters | int]] | None
+        Queue to share future tasks and stopped tasks to :code:`EventProducers`
     """
     def __init__(
         self,
         timer: Timer,
         updated_nodes: list[etree.Element] | None,
-        future_tasks: list[etree.Element] | None,
+        html_nodes: list[etree.Element] | None,
+        future_tasks: Queue[tuple[TimerStatus, TimerParameters | int]] | None,
     ):
         self._timer = timer
         self._updated_nodes = updated_nodes
+        self._html_nodes = html_nodes
         self._future_tasks = future_tasks
 
     def restart(
@@ -86,18 +99,38 @@ class TimerModifier:
         delay: float | None = None,
         starting_time: float | None = None,
     ):
+        """
+        Restarts the timer.
+
+        Parameters
+        ----------
+        callback : Callable[[float, TimerEvent], None]
+            Timer callback
+        delay : float | None
+            Delay value
+        starting_time : float | None
+            Starting time value
+        """
         self.stop()
         self._timer = Timer()
         self._future_tasks.put(
             (
                 TimerStatus.RESTART,
                 TimerParameters(
-                    self._timer, callback, self._updated_nodes, delay, starting_time
+                    self._timer,
+                    callback,
+                    self._updated_nodes,
+                    self._html_nodes,
+                    delay,
+                    starting_time,
                 ),
             )
         )
 
     def stop(self):
+        """
+        Stops the timer.
+        """
         self._timer.stop()
         self._future_tasks.put((TimerStatus.STOP, id(self._timer)))
 
@@ -220,7 +253,12 @@ class EventProducers:
             delay,
             starting_time,
         )
-        return TimerModifier(timer, updated_nodes, self._future_tasks)
+        return TimerModifier(
+            timer,
+            updated_nodes,
+            html_nodes,
+            self._future_tasks
+        )
 
     def add_interval(
         self,
@@ -262,7 +300,12 @@ class EventProducers:
             delay,
             starting_time,
         )
-        return TimerModifier(interval, updated_nodes, self._future_tasks)
+        return TimerModifier(
+            interval,
+            updated_nodes,
+            html_nodes,
+            self._future_tasks
+        )
 
     def remove_timer(self, timer_modifier: TimerModifier):
         """
