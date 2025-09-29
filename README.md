@@ -1,16 +1,24 @@
 # detroit-live
 
-**Under developement**: `detroit-live` is based on [`detroit`](https://github.com/bourbonut/detroit) and aims to bring interactivity to visualizations.
+`detroit-live` is based on [`detroit`](https://github.com/bourbonut/detroit) and aims to bring interactivity to visualizations.
+
+# Installation
+
+```sh
+pip install git+https://github.com/bourbonut/detroit-live.git
+```
+
+# Coverage
 
 | Package Name    | Yes / No | Tests OK | Notes                           |
 |-----------------|----------|----------|---------------------------------|
 | brush           | No       | -        |                                 |
-| dispatch        | Yes      | No       |                                 |
-| drag            | Yes      | No       | Not sure that touch events work |
-| selection       | Yes      | No       |                                 |
-| timer           | Yes      | No       |                                 |
+| dispatch        | Yes      | Yes      |                                 |
+| drag            | Yes      | Yes      | Touch events not tested         |
+| selection       | Yes      | Yes      |                                 |
+| timer           | Yes      | Yes      |                                 |
 | transition      | No       | -        |                                 |
-| zoom            | Yes      | -        |                                 |
+| zoom            | Yes      | Yes      | Touch events not tested         |
 
 
 ## Examples
