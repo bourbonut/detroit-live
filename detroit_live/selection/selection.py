@@ -1440,13 +1440,14 @@ class LiveSelection(Selection[T]):
     ) -> TLiveSelection:
         """
         Adds a listener to each selected element for the specified event
-        typename.
+        typename if the specified :code:`listener` is not :code:`None`. Else,
+        it removes the listener given the specified event typename.
 
         Parameters
         ----------
         typename : str
             Event typename
-        listener : Callable[[Event, T | None, Optional[etree.Element]], None]
+        listener : Callable[[Event, T | None, Optional[etree.Element]], None] | None
             Listener function
         extra_nodes : list[etree.Element] | None
             Extra nodes to update when the listener is called
@@ -1456,7 +1457,7 @@ class LiveSelection(Selection[T]):
             to activate this event listener only when another event listener
             was activated.
         target : str | None
-            Target on which the event listener is added
+            Javascript target on which the event listener is added.
 
         Returns
         -------
