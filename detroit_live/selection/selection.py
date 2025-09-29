@@ -791,9 +791,7 @@ class LiveSelection(Selection[T]):
         return self.text(value)
 
     def classed(
-        self,
-        names: str,
-        value: Accessor[T, bool] | bool | None = None
+        self, names: str, value: Accessor[T, bool] | bool | None = None
     ) -> TLiveSelection:
         """
         Assigns or unassigns the specified CSS class names on the selected

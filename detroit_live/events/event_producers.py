@@ -23,6 +23,7 @@ class TimerStatus(Enum):
     """
     Timer status enum
     """
+
     STOP = auto()
     RESTART = auto()
 
@@ -57,6 +58,7 @@ class TimerParameters:
     starting_time : float | None
         Starting time value
     """
+
     timer: Timer
     callback: Callable[[float, TimerEvent], None]
     updated_nodes: list[etree.Element] | None
@@ -81,6 +83,7 @@ class TimerModifier:
     future_tasks : Queue[tuple[TimerStatus, TimerParameters | int]] | None
         Queue to share future tasks and stopped tasks to :code:`EventProducers`
     """
+
     def __init__(
         self,
         timer: Timer,
@@ -150,6 +153,7 @@ class SharedState:
     future_tasks : Queue[tuple[TimerStatus, TimerParameters | int]]
         Restart and stop events from :code:`TimerModifier`
     """
+
     def __init__(self):
         self.queue = asyncio.Queue()
         self.restart = {}
@@ -158,7 +162,6 @@ class SharedState:
 
 
 class EventProducers:
-
     _shared_state = SharedState()
 
     def __init__(self):
@@ -205,8 +208,7 @@ class EventProducers:
 
         def wrapper(elapsed: float, time_event: TimerEvent):
             states = [
-                (node, node_attribs(node, node in html_nodes))
-                for node in updated_nodes
+                (node, node_attribs(node, node in html_nodes)) for node in updated_nodes
             ]
             callback(elapsed, time_event)
             self._queue.put_nowait((EventSource.PRODUCER, list(diffs(states))))
@@ -253,12 +255,7 @@ class EventProducers:
             delay,
             starting_time,
         )
-        return TimerModifier(
-            timer,
-            updated_nodes,
-            html_nodes,
-            self._future_tasks
-        )
+        return TimerModifier(timer, updated_nodes, html_nodes, self._future_tasks)
 
     def add_interval(
         self,
@@ -300,12 +297,7 @@ class EventProducers:
             delay,
             starting_time,
         )
-        return TimerModifier(
-            interval,
-            updated_nodes,
-            html_nodes,
-            self._future_tasks
-        )
+        return TimerModifier(interval, updated_nodes, html_nodes, self._future_tasks)
 
     def remove_timer(self, timer_modifier: TimerModifier):
         """
@@ -376,6 +368,7 @@ class EventProducers:
         """
         if result is None or (isinstance(result, (int, tuple)) and self._pending):
             return asyncio.create_task(self._queue.get())
+
 
 def event_producers() -> EventProducers:
     """

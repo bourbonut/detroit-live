@@ -2,7 +2,7 @@ from typing import Generic
 
 from lxml import etree
 
-from ..events import EventListeners, TrackingTree, EventProducers
+from ..events import EventListeners, EventProducers, TrackingTree
 from ..types import T
 
 

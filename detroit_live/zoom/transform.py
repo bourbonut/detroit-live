@@ -14,11 +14,7 @@ class Transform:
 
     def __eq__(self, o: Any) -> bool:
         if isinstance(o, Transform):
-            return (
-                self.k == o.k
-                and self.x == o.x
-                and self.y == o.y
-            )
+            return self.k == o.k and self.x == o.x and self.y == o.y
         return False
 
     def scale(self, k: float) -> TTransform:

@@ -33,6 +33,7 @@ class ZoomState:
 
 _zoom_state = ZoomState()
 
+
 def zoom_transform(node: etree.Element) -> Transform:
     transform = _zoom_state.get_zoom(node)
     while transform is None:
