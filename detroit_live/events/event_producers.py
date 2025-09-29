@@ -20,6 +20,9 @@ EMPTY_DIFF = {"remove": [], "change": []}
 
 
 class TimerStatus(Enum):
+    """
+    Timer status enum
+    """
     STOP = auto()
     RESTART = auto()
 
@@ -36,16 +39,43 @@ class TimerStatus(Enum):
     slots=True,
 )
 class TimerParameters:
+    """
+    Data class which holds all parameters to make a :code:`Timer`
+
+    Attributes
+    ----------
+    timer : Timer
+        Initialized empty timer instance
+    callback : Callable[[float, TimerEvent], None]
+        Timer callback
+    updated_nodes : list[etree.Element] | None
+        Nodes to update when the timer callback is called
+    html_nodes : list[etree.Element] | None
+        Same as :code:`updated_nodes` but update the :code:`innerHTML` as well
+    delay : float | None
+        Delay value
+    starting_time : float | None
+        Starting time value
+    """
     timer: Timer
     callback: Callable[[float, TimerEvent], None]
-    updated_nodes: list[etree.Element]
-    html_nodes: list[etree.Element]
+    updated_nodes: list[etree.Element] | None
+    html_nodes: list[etree.Element] | None
     delay: float | None
     starting_time: float | None
 
 
 class TimerModifier:
-    def __init__(self, timer, updated_nodes, future_tasks):
+    """
+    Class which holds a :code:`Timer` and supplies :code:`restart` and
+    :code:`stop` methods applied on the timer object.
+    """
+    def __init__(
+        self,
+        timer: Timer,
+        updated_nodes: list[etree.Element] | None,
+        future_tasks: list[etree.Element] | None,
+    ):
         self._timer = timer
         self._updated_nodes = updated_nodes
         self._future_tasks = future_tasks
@@ -73,6 +103,20 @@ class TimerModifier:
 
 
 class SharedState:
+    """
+    Shared state for global context when instanciating :code:`EventProducers`.
+
+    Attributes
+    ----------
+    queue : asyncio.Queue
+        Updated node attributes to send to the websocket
+    restart : dict[int, TimerParameters]
+        Tasks to restart
+    pending : set[int]
+        Set of pending task ids
+    future_tasks : Queue[tuple[TimerStatus, TimerParameters | int]]
+        Restart and stop events from :code:`TimerModifier`
+    """
     def __init__(self):
         self.queue = asyncio.Queue()
         self.restart = {}
@@ -96,6 +140,24 @@ class EventProducers:
         updated_nodes: list[etree.Element] | None,
         html_nodes: list[etree.Element] | None,
     ) -> Callable[[float, TimerEvent], None]:
+        """
+        Decorator function; for any call of :code:`callback`, gathers node
+        changes and puts them into an asynchronous queue.
+
+        Parameters
+        ----------
+        callback : Callable[[float, TimerEvent], None]
+            Timer callback
+        updated_nodes : list[etree.Element] | None
+            Nodes to update when the timer callback is called
+        html_nodes : list[etree.Element] | None
+            Same as :code:`updated_nodes` but update the :code:`innerHTML` as well
+
+        Returns
+        -------
+        Callable[[float, TimerEvent], None]
+            Decorated callback
+        """
         updated_nodes = [] if updated_nodes is None else updated_nodes
         html_nodes = set() if html_nodes is None else set(html_nodes)
         ttree = TrackingTree()
@@ -126,6 +188,28 @@ class EventProducers:
         delay: float | None = None,
         starting_time: float | None = None,
     ) -> TimerModifier:
+        """
+        Adds a timer which will calls :code:`callback` until its timer event is
+        set.
+
+        Parameters
+        ----------
+        callback : Callable[[float, TimerEvent], None]
+            Timer callback
+        updated_nodes : list[etree.Element] | None
+            Nodes to update when the timer callback is called
+        html_nodes : list[etree.Element] | None
+            Same as :code:`updated_nodes` but update the :code:`innerHTML` as well
+        delay : float | None
+            Delay value
+        starting_time : float | None
+            Starting time value
+
+        Returns
+        -------
+        TimerModifier
+            Timer modifier
+        """
         timer = Timer()
         timer_id = id(timer)
         self._restart[timer_id] = TimerParameters(
@@ -146,6 +230,28 @@ class EventProducers:
         delay: float | None = None,
         starting_time: float | None = None,
     ) -> TimerModifier:
+        """
+        Adds a interval timer which will calls :code:`callback` until its timer
+        event is set.
+
+        Parameters
+        ----------
+        callback : Callable[[float, TimerEvent], None]
+            Timer callback
+        updated_nodes : list[etree.Element] | None
+            Nodes to update when the timer callback is called
+        html_nodes : list[etree.Element] | None
+            Same as :code:`updated_nodes` but update the :code:`innerHTML` as well
+        delay : float | None
+            Delay value
+        starting_time : float | None
+            Starting time value
+
+        Returns
+        -------
+        TimerModifier
+            Timer modifier
+        """
         interval = Interval()
         timer_id = id(interval)
         self._restart[timer_id] = TimerParameters(
@@ -159,9 +265,30 @@ class EventProducers:
         return TimerModifier(interval, updated_nodes, self._future_tasks)
 
     def remove_timer(self, timer_modifier: TimerModifier):
+        """
+        Removes a non started timer.
+
+        Parameters
+        ----------
+        timer_modifier : TimerModifier
+            Timer Modifier
+        """
         self._restart.pop(id(timer_modifier._timer))
 
     def next_tasks(self, result: Any | None = None) -> set[asyncio.Task] | None:
+        """
+        Returns the next tasks to await given the last result.
+
+        Parameters
+        ----------
+        result : Any | None
+            Last result
+
+        Returns
+        -------
+        set[asyncio.Task] | None
+            Next tasks to await
+        """
         while not self._future_tasks.empty():
             match self._future_tasks.get():
                 case (TimerStatus.RESTART, timer_params):
@@ -190,8 +317,30 @@ class EventProducers:
             return set(self._pending.values())
 
     def queue_task(self, result: Any | None = None) -> asyncio.Task | None:
+        """
+        Returns a queue task (:code:`asyncio.create_task(queue.get())`)
+        depending the last result.
+
+        Parameters
+        ----------
+        result : Any | None
+            Last result
+
+        Returns
+        -------
+        asyncio.Task | None
+            Asynchrous :code:`queue.get` task
+        """
         if result is None or (isinstance(result, (int, tuple)) and self._pending):
             return asyncio.create_task(self._queue.get())
 
 def event_producers() -> EventProducers:
+    """
+    Returns a new instance of event producers.
+
+    Returns
+    -------
+    EventProducers
+        Event Producers
+    """
     return EventProducers()
