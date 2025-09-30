@@ -170,11 +170,9 @@ def parse_event(typename: str | None = None) -> type[Event]:
         Event class
     """
     match typename:
-        case "open":
+        case "open" | "resize":
             return WindowSizeEvent
-        case "resize":
-            return WindowSizeEvent
-        case "change":
+        case "change" | "input":
             return ChangeEvent
         case "wheel":
             return WheelEvent

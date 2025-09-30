@@ -122,6 +122,7 @@ def test_snake_to_camel(value, expected):
         ["open", WindowSizeEvent],
         ["resize", WindowSizeEvent],
         ["change", ChangeEvent],
+        ["input", ChangeEvent],
         ["wheel", WheelEvent],
         ["mouseover", MouseEvent],
         ["foo", MouseEvent],
