@@ -191,7 +191,6 @@ circle = (
 )
 
 
-date = 1801
 pause = False
 buttons = body.insert("div", "svg").attr("style", "font: 12px var(--sans-serif); font-variant-numeric: tabular-nums; display: flex; height: 33px; align-items: center;")
 play_button = (
@@ -210,7 +209,7 @@ slider = (
     .attr("step", "1")
     .attr("style", "width: 180px;")
 )
-span = body.insert("div", "svg").append("span").text(f"Year: {date}")
+span = body.insert("div", "svg").append("span").text("Year: 1800")
 
 class ButtonState:
     def __init__(self):
@@ -231,7 +230,7 @@ class ButtonState:
                 self.increase_slider,
                 updated_nodes=circle.nodes() + span.nodes() + slider.nodes(),
                 html_nodes=span.nodes(),
-                delay=40,
+                delay=50,
             )
             self.is_pause = True
 
@@ -268,7 +267,7 @@ button_state = ButtonState()
 
 play_button.on("click", button_state.play_event, html_nodes=play_button.nodes())
 slider.on(
-    "click",
+    "input",
     button_state.slider_event,
     extra_nodes=circle.nodes() + span.nodes() + slider.nodes(),
     html_nodes=span.nodes() + play_button.nodes(),
