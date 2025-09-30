@@ -161,7 +161,13 @@ def y_axis(g):
 
 html = d3live.create("html")
 body = html.append("body")
-svg = body.append("div").append("svg").attr("viewBox", [0, 0, width, height])
+svg = (
+    body.append("div")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height])
+)
 
 svg.append("g").call(x_axis)
 svg.append("g").call(y_axis)
@@ -186,15 +192,52 @@ circle = (
 
 
 date = 1801
+pause = False
+buttons = body.insert("div", "svg").attr("style", "font: 12px var(--sans-serif); font-variant-numeric: tabular-nums; display: flex; height: 33px; align-items: center;")
+play_button = (
+    buttons.append("button")
+    .attr("name", "play")
+    .attr("style", "margin-right: 0.4em; width: 5em;")
+    .text("Play")
+)
+slider = (
+    buttons.append("input")
+    .attr("name", "year")
+    .attr("type", "range")
+    .attr("min", "1800")
+    .attr("max", "2006")
+    .attr("value", "1800")
+    .attr("step", "1")
+    .attr("style", "width: 180px;")
+)
 span = body.insert("div", "svg").append("span").text(f"Year: {date}")
 
+class ButtonState:
+    def __init__(self):
+        self.is_pause = False
+        self.slider_value = 1800
+        self.event_producers = d3live.event_producers()
+        self.timer_modifier = None
 
-def update(elapsed, timer_event):
-    global date
-    date += 1
-    if date == 2006:
-        timer_event.set()
-    else:
+    def play_event(self, event, d, node):
+        if self.is_pause:
+            play_button.text("Play")
+            if self.timer_modifier is not None:
+                self.timer_modifier.stop()
+            self.is_pause = False
+        else:
+            play_button.text("Pause")
+            self.timer_modifier = self.event_producers.add_interval(
+                self.increase_slider,
+                updated_nodes=circle.nodes() + span.nodes() + slider.nodes(),
+                html_nodes=span.nodes(),
+                delay=40,
+            )
+            self.is_pause = True
+
+    def update(self):
+        date = self.slider_value
+        slider.attr("value", date)
         current_data = data_at(datetime(date, 1, 1))
         (
             circle.data(current_data, lambda d: d.name)
@@ -204,11 +247,31 @@ def update(elapsed, timer_event):
         )
         span.text(f"Year: {date}")
 
+    def slider_event(self, event, d, node):
+        play_button.text("Play")
+        if self.timer_modifier is not None:
+            self.timer_modifier.stop()
+        self.is_pause = False
 
-d3live.event_producers().add_interval(
-    update,
-    updated_nodes=circle.nodes() + span.nodes(),
-    html_nodes=span.nodes(),
-    delay=40,
+        self.slider_value = int(event.value)
+        self.update()
+
+    def increase_slider(self, elapsed, timer_event):
+        if self.slider_value > 2005:
+            timer_event.set()
+            return
+
+        self.slider_value += 1
+        self.update()
+
+button_state = ButtonState()
+
+play_button.on("click", button_state.play_event, html_nodes=play_button.nodes())
+slider.on(
+    "click",
+    button_state.slider_event,
+    extra_nodes=circle.nodes() + span.nodes() + slider.nodes(),
+    html_nodes=span.nodes() + play_button.nodes(),
 )
+
 html.create_app().run()
