@@ -1324,17 +1324,22 @@ class LiveSelection(Selection[T]):
             exit=selection._exit,
         )
 
-    def clone(self) -> TLiveSelection:
+    def clone(self, deep: bool = False) -> TLiveSelection:
         """
         Inserts clones of the selected elements immediately following the
         selected elements and returns a selection of the newly added clones.
+
+        Parameters
+        ----------
+        deep : bool
+            :code:`True` for deep copy
 
         Returns
         -------
         LiveSelection
             Clone of itself
         """
-        selection = super().clone()
+        selection = super().clone(deep)
         return LiveSelection(
             selection._groups,
             selection._parents,
