@@ -1,0 +1,38 @@
+circle {
+  fill: #777;
+  fill-opacity: 0.1;
+}
+
+circle.visited {
+  fill-opacity: 1;
+  stroke-width: 2px;
+}
+
+circle.all {
+  fill: orange;
+  fill-opacity: 1;
+  stroke: orange;
+  stroke-width: 4px;
+}
+
+circle.find {
+  fill: green;
+  fill-opacity: 1;
+  stroke: red;
+  stroke-width: 5px;
+}
+
+circle.radius {
+  fill: none;
+}
+
+rect {
+  fill: none;
+  stroke: none;
+  shape-rendering: crispEdges;
+}
+
+rect.visited {
+  stroke: #888;
+  stroke-width: 1px;
+}

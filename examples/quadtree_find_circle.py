@@ -1,51 +1,10 @@
 # https://observablehq.com/@d3/quadtree-findincircle
 from math import hypot
 from random import random
+from pathlib import Path
+import detroit_live as d3
 
-import detroit as d3
-
-import detroit_live as d3live
-
-style = """
-circle {
-  fill: #777;
-  fill-opacity: 0.1;
-}
-
-circle.visited {
-  fill-opacity: 1;
-  stroke-width: 2px;
-}
-
-circle.all {
-  fill: orange;
-  fill-opacity: 1;
-  stroke: orange;
-  stroke-width: 4px;
-}
-
-circle.find {
-  fill: green;
-  fill-opacity: 1;
-  stroke: red;
-  stroke-width: 5px;
-}
-
-circle.radius {
-  fill: none;
-}
-
-rect {
-  fill: none;
-  stroke: none;
-  shape-rendering: crispEdges;
-}
-
-rect.visited {
-  stroke: #888;
-  stroke-width: 1px;
-}
-"""
+STYLE_PATH = Path(__file__).resolve().parent / "styles" / "quadtree_find_circle.css"
 
 width = 928
 height = 500
@@ -138,11 +97,13 @@ quadtree = (
     .add_all(data)
 )
 
-html = d3live.create("html")
-head = html.append("head").append("style").text(style)
+html = d3.create("html")
+head = html.append("head").append("style").text(STYLE_PATH.read_text())
 svg = (
     html.append("body")
     .append("svg")
+    .attr("width", width)
+    .attr("height", height)
     .attr("viewBox", " ".join(map(str, [0, 0, width, height])))
     .style("cursor", "crosshair")
 )
@@ -196,7 +157,7 @@ def point_each(_, d):
 
 
 def move(event, _, node):
-    x, y = (200, 200) if event is None else d3live.pointer(event, node)
+    x, y = (200, 200) if event is None else d3.pointer(event, node)
 
     quad.each(quad_each)
     point.each(point_each)

@@ -1,13 +1,13 @@
+# Source: https://observablehq.com/@d3/index-chart/2
 from bisect import bisect_left
 from collections import namedtuple
 from functools import reduce
 from operator import iadd, itemgetter
 from pathlib import Path
 
-import detroit as d3
+import detroit_live as d3
 import polars as pl
 
-import detroit_live as d3live
 
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
 URLS = {
@@ -96,7 +96,7 @@ z = d3.scale_ordinal(d3.SCHEME_CATEGORY_10).set_domain(
 
 # Create the SVG container.
 svg = (
-    d3live.create("svg")
+    d3.create("svg")
     .attr("width", width)
     .attr("height", height)
     .attr("viewBox", [0, 0, width, height])
@@ -120,7 +120,6 @@ svg = (
     .call(d3.axis_left(y).set_ticks(None, lambda x: str(x) + "×"))
     .call(
         lambda g: g.select_all(".tick line")
-        .clone()
         .attr("stroke-opacity", lambda d: None if d == 1 else 0.2)
         .attr("x2", width - margin.left - margin.right)
     )
@@ -172,13 +171,12 @@ def transform(values, date):
     # For each given series, the update function needs to identify the
     # date - closest to the current date—that actually contains a value. To do
     # this efficiently, it uses a bisector:
-    # bisect = d3.bisector(lambda d: d.Date).left
     i = bisect_left(list(map(itemgetter("Date"), values)), date, 0, len(values) - 1)
     return f"translate(0,{y(1) - y(values[i]['value'] / values[0]['value'])})"
 
 
 def mouvemove(event, d, node):
-    date = x.invert(d3live.pointer(event, node)[0])
+    date = x.invert(d3.pointer(event, node)[0])
     rule.attr("transform", f"translate({x(date) + 0.5}, 0)")
     serie.attr("transform", lambda values: transform(values, date))
     svg.attr("value", date)

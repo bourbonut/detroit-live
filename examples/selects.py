@@ -1,7 +1,8 @@
-# For the moment, this example is not working
-import detroit_live as d3live
+# Incomplete examples
+# TODO: make all buttons
+import detroit_live as d3
 
-html = d3live.create("html")
+html = d3.create("html")
 body = html.append("body")
 
 cars = ["volvo", "saab", "mercedes", "audi"]

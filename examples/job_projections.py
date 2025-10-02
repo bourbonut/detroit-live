@@ -3,8 +3,7 @@ import json
 from collections import namedtuple
 from pathlib import Path
 
-import detroit as d3
-import detroit_live as d3live
+import detroit_live as d3
 import polars as pl
 import requests
 
@@ -12,6 +11,7 @@ URL = "https://gist.githubusercontent.com/eidietrich/0047db2bfcfae1543ff37c70474
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
 
 PWD = Path(__file__).resolve().parent
+STYLE_PATH = PWD / "styles" / "job_projections.css"
 
 # Download data if not found else load data from `examples/data` folder
 def load_data() -> pl.DataFrame:
@@ -117,8 +117,8 @@ radius = d3.scale_sqrt([df["openings"].min(), df["openings"].max()], [2, 20])
 color = d3.scale_ordinal(color_domain, color_range)
 
 # Initialize the HTML document, add style in `<head>`.
-html = d3live.create("html")
-html.append("head").append("style").text((PWD / "job_projections.css").read_text())
+html = d3.create("html")
+html.append("head").append("style").text(STYLE_PATH.read_text())
 body = html.append("body")
 
 # scale factor; 2 to get two times bigger chart.
@@ -340,7 +340,7 @@ def mouseover(event, d, node):
 
 # Mousemove event function
 def mousemove(event, d, node):
-    point = d3live.pointer(event)
+    point = d3.pointer(event)
     local_data = [
         "Occupation",
         d["SOCTitle"],

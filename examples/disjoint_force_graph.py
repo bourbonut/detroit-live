@@ -1,11 +1,8 @@
 # https://observablehq.com/@d3/disjoint-force-directed-graph/2
 import json
 from math import sqrt
-
-import detroit as d3
 import requests
-
-import detroit_live as d3live
+import detroit_live as d3
 
 URL = "https://static.observableusercontent.com/files/e3680d5f766e85edde560c9c31a6dba2ddfcf2f66e1dced4afa18d8040f1f205e0bde1b8b234d866373f2bfc5806fafc47e244c5c9f48b60aaa1917c1b80fcb7?response-content-disposition=attachment%3Bfilename*%3DUTF-8%27%27graph.json"
 
@@ -24,7 +21,7 @@ nodes = data["nodes"]
 
 # Create a simulation with several forces.
 simulation = (
-    d3live.force_simulation(nodes)
+    d3.force_simulation(nodes)
     .set_force("link", d3.force_link(links).set_id(lambda d: d["id"]))
     .set_force("charge", d3.force_many_body())
     .set_force("x", d3.force_x())
@@ -33,7 +30,7 @@ simulation = (
 
 # Create the SVG container.
 svg = (
-    d3live.create("svg")
+    d3.create("svg")
     .attr("width", width)
     .attr("height", height)
     .attr("viewBox", " ".join(map(str, [-width / 2, -height / 2, width, height])))
@@ -103,7 +100,7 @@ def dragended(event, d, node):
 
 # Add a drag behavior.
 node.call(
-    d3live.drag()
+    d3.drag()
     .on("start", dragstarted)
     .on("drag", dragged)
     .on("end", dragended)

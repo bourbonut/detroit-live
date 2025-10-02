@@ -6,8 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from operator import itemgetter
 
-import detroit as d3
-import detroit_live as d3live
+import detroit_live as d3
 import requests
 
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
@@ -159,7 +158,7 @@ def y_axis(g):
     )
 
 
-html = d3live.create("html")
+html = d3.create("html")
 body = html.append("body")
 svg = (
     body.append("div")
@@ -192,7 +191,15 @@ circle = (
 
 
 pause = False
-buttons = body.insert("div", "svg").attr("style", "font: 12px var(--sans-serif); font-variant-numeric: tabular-nums; display: flex; height: 33px; align-items: center;")
+buttons = (
+    body.insert("div", "svg")
+    .attr(
+        "style",
+        "font: 12px var(--sans-serif);"
+        " font-variant-numeric: tabular-nums;"
+        " display: flex; height: 33px; align-items: center;"
+    )
+)
 play_button = (
     buttons.append("button")
     .attr("name", "play")
@@ -215,7 +222,7 @@ class ButtonState:
     def __init__(self):
         self.is_pause = False
         self.slider_value = 1800
-        self.event_producers = d3live.event_producers()
+        self.event_producers = d3.event_producers()
         self.timer_modifier = None
 
     def play_event(self, event, d, node):

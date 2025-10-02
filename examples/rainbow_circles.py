@@ -1,10 +1,7 @@
 # https://observablehq.com/@d3/drag-zoom
 from math import cos, pi, sin, sqrt
 from operator import itemgetter
-
-import detroit as d3
-
-import detroit_live as d3live
+import detroit_live as d3
 
 theta = pi * (3 - sqrt(5))
 radius = 6
@@ -18,7 +15,7 @@ data = [
 ]
 
 svg = (
-    d3live.create("svg")
+    d3.create("svg")
     .attr("width", width)
     .attr("height", height)
     .attr("viewBox", " ".join(map(str, [0, 0, width, height])))
@@ -28,7 +25,6 @@ g = svg.append("g").attr("cursor", "grab")
 
 
 def drag_started(event, d, node):
-    # d3live.select(node).raise()
     g.attr("cursor", "grabbing")
 
 
@@ -51,7 +47,7 @@ def drag_ended(event, d, node):
     .attr("r", radius)
     .attr("fill", lambda d, i: d3.interpolate_rainbow(i / 360))
     .call(
-        d3live.drag(extra_nodes=[g.node()])
+        d3.drag(extra_nodes=[g.node()])
         .on("start", drag_started)
         .on("drag", dragged)
         .on("end", drag_ended)
@@ -64,7 +60,7 @@ def zoomed(event, d, node):
 
 
 svg.call(
-    d3live.zoom(extra_nodes=[g.node()])
+    d3.zoom(extra_nodes=[g.node()])
     .set_extent([[0, 0], [width, height]])
     .set_scale_extent([1, 8])
     .on("zoom", zoomed)

@@ -1,23 +1,10 @@
 # https://d3-graph-gallery.com/graph/interactivity_tooltip.html#template
 from collections import namedtuple
-
-import detroit as d3
+from pathlib import Path
+import detroit_live as d3
 import polars as pl
 
-import detroit_live as d3live
-
-style = """
-.tooltip {
-  position: absolute;
-  display: block;
-  margin: 0;
-  font-size: 0.875rem;
-  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-  font-weight: 400;
-  word-wrap: break-word;
-}
-"""
-
+STYLE_PATH = Path(__file__).resolve().parent / "styles" / "heatmap.css"
 URL = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/heatmap_data.csv"
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
 
@@ -32,8 +19,8 @@ groups = heatmap["group"].unique().sort().to_list()
 variables = heatmap["variable"].unique().to_list()
 variables = sorted(variables, key=lambda v: int(v[1:]))
 
-html = d3live.create("html")
-html.append("style").text(style)
+html = d3.create("html")
+html.append("style").text(STYLE_PATH.read_text())
 body = html.append("body").append("div")
 
 svg = (
