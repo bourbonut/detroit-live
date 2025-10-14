@@ -2,10 +2,12 @@
     <img src="https://raw.githubusercontent.com/bourbonut/detroit-live/main/docs/source/_static/logo.png"></img>
 </h1>
 
+[![Documentation Status](https://readthedocs.org/projects/detroit-live/badge/?version=latest)](https://detroit-live.readthedocs.io/en/latest/?badge=latest)
 [![Licence ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
 `detroit-live` is based on [`detroit`](https://github.com/bourbonut/detroit) and aims to bring interactivity to visualizations.
 
+- [Documentation](https://detroit-live.readthedocs.io)
 - [Examples](https://github.com/bourbonut/detroit-live/tree/main/examples)
 
 <p align="center">
