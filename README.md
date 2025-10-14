@@ -8,6 +8,12 @@
 
 - [Examples](https://github.com/bourbonut/detroit-live/tree/main/examples)
 
+<p align="center">
+    <img src="./docs/source/figures/job-projections.avif"/>
+    <br />
+    <a href="https://github.com/bourbonut/detroit-live/blob/main/examples/job_projections.py">Source code</a>
+</p>
+
 # Installation
 
 ```sh
