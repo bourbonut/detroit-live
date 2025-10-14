@@ -73,8 +73,8 @@ class LiveForceSimulation(ForceSimulation):
         The :code:`typename` must be one of the following:
 
         * :code:`tick` - after each tick of the simulation's internal timer.
-        * :code:`end` - after the simulation's timer stops when :code:`alpha <
-        alpha_min`.
+        * :code:`end` - after the simulation's timer stops when \
+        :code:`alpha < alpha_min`.
 
         Parameters
         ----------
