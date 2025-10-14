@@ -9,4 +9,10 @@ Table of Content
 .. toctree::
    :maxdepth: 2
 
+   heatmap
+   rainbow
+   index_chart
+   force_graph
+   quadtree
+   job_projections
    api/index
