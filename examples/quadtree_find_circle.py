@@ -21,40 +21,6 @@ def materialize(quadtree):
     return rects
 
 
-def find_in_circle(quadtree, x, y, radius, filter_func):
-    result = []
-    radius2 = radius * radius
-    if filter_func:
-
-        def accept(d):
-            if filter_func(d):
-                result.append(d)
-    else:
-
-        def accept(d):
-            result.append(d)
-
-    def visit(node, x1, y1, x2, y2):
-        if isinstance(node, list):
-            return (
-                x1 >= x + radius
-                or y1 >= y + radius
-                or x2 < x - radius
-                or y2 < y - radius
-            )
-        dx = quadtree.get_x()(node["data"]) - x
-        dy = quadtree.get_y()(node["data"]) - y
-        if dx * dx + dy * dy < radius2:
-            while True:
-                accept(node["data"])
-                node = node.get("next")
-                if node is None:
-                    break
-
-    quadtree.visit(visit)
-    return result
-
-
 def find_in_circle_mark(quadtree, x, y, radius):
     result = []
 
