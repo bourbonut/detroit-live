@@ -20,7 +20,7 @@ variables = heatmap["variable"].unique().to_list()
 variables = sorted(variables, key=lambda v: int(v[1:]))
 
 html = d3.create("html")
-html.append("style").text(STYLE_PATH.read_text())
+html.append("head").append("style").text(STYLE_PATH.read_text())
 body = html.append("body").append("div")
 
 svg = (
@@ -82,7 +82,7 @@ def mousemove(event, d, node):
 
 def mouseleave(event, d, node):
     tooltip.style("opacity", 0)
-    (d3.select(node).style("stroke", "none").style("opacity", 0.8))
+    d3.select(node).style("stroke", "none").style("opacity", 0.8)
 
 
 def key_data(d):
