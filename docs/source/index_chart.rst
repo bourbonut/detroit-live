@@ -61,6 +61,7 @@ Index Chart
 
 .. code:: python
 
+   # Declare the chart dimensions and margins
    width = 928
    height = 600
    margin = Margin(20, 40, 30, 40)

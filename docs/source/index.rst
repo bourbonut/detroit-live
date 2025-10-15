@@ -135,6 +135,7 @@ Table of Content
    heatmap
    rainbow
    index_chart
+   wealth_health
    force_graph
    quadtree
    job_projections
