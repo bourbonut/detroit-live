@@ -118,7 +118,7 @@ In the function :code:`update_date`, :code:`circle` and :code:`span` nodes are u
 Run the application
 *******************
 
-Once you have added all necessary event listeners and event producers, you can start a web application to get interactivity:
+Once you have added all necessary event listeners and event producers, you can start a web application to get interactivity by using :func:`LiveSelection.create_app <detroit_live.selection.selection.LiveSelection.create_app>`:
 
 .. code:: python
   
