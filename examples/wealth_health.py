@@ -190,7 +190,6 @@ circle = (
 )
 
 
-pause = False
 buttons = (
     body.insert("div", "svg")
     .attr(
