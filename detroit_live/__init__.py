@@ -369,6 +369,7 @@ from .timer import (
     timeout,
     timer,
 )
+from .zoom import Transform as ZoomTransform
 from .zoom import Zoom as zoom
 from .zoom import (
     zoom_identity,
@@ -418,6 +419,7 @@ __all__ = [
     "SCHEME_YLORRD",
     "SYMBOLS_FILL",
     "SYMBOLS_STROKE",
+    "ZoomTransform",
     "arc",
     "area",
     "area_radial",
