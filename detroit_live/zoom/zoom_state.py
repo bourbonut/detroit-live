@@ -35,6 +35,22 @@ _zoom_state = ZoomState()
 
 
 def zoom_transform(node: etree.Element) -> Transform:
+    """
+    Returns the current transform for the specified node. Note that node should
+    typically be a DOM element, not a selection. (A selection may consist of
+    multiple nodes, in different states, and this function only returns a
+    single transform.)
+
+    Parameters
+    ----------
+    node : etree.Element
+        Node element
+
+    Returns
+    -------
+    Transform
+        Transform object
+    """
     transform = _zoom_state.get_zoom(node)
     while transform is None:
         node = node.getparent()
