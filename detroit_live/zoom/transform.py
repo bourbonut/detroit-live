@@ -24,6 +24,13 @@ class Transform:
         X-coordinate translation
     y : float
         Y-coordinate translation
+
+    Examples
+    --------
+
+    >>> identity = d3.ZoomTransform(1, 0, 0)
+    >>> identity == d3.zoom_identity
+    True
     """
     def __init__(self, k: float, x: float, y: float):
         self.k = k
@@ -208,6 +215,9 @@ class Transform:
         )
 
     def __str__(self) -> str:
+        """
+        Returns :code:`"translate({x},{y}) scale({k})"`.
+        """
         return f"translate({self.x},{self.y}) scale({self.k})"
 
 
