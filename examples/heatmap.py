@@ -1,8 +1,10 @@
 # https://d3-graph-gallery.com/graph/interactivity_tooltip.html#template
 from collections import namedtuple
 from pathlib import Path
-import detroit_live as d3
+
 import polars as pl
+
+import detroit_live as d3
 
 STYLE_PATH = Path(__file__).resolve().parent / "styles" / "heatmap.css"
 URL = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/heatmap_data.csv"

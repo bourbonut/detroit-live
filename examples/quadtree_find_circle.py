@@ -1,7 +1,8 @@
 # https://observablehq.com/@d3/quadtree-findincircle
 from math import hypot
-from random import random
 from pathlib import Path
+from random import random
+
 import detroit_live as d3
 
 STYLE_PATH = Path(__file__).resolve().parent / "styles" / "quadtree_find_circle.css"
@@ -152,9 +153,7 @@ def move(event, _, node):
 
 
 svg.on(
-    "mousemove click",
-    move,
-    extra_nodes=quad.nodes() + point.nodes() + circle.nodes()
+    "mousemove click", move, extra_nodes=quad.nodes() + point.nodes() + circle.nodes()
 )
 move(None, None, None)
 

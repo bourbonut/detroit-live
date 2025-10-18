@@ -1,6 +1,7 @@
 import detroit_live as d3
 from detroit_live.events.tracking_tree import TrackingTree
 
+
 def test_zoom_event_1():
     div = d3.create("div").datum("hello")
     ttree = TrackingTree()
@@ -40,11 +41,13 @@ def test_zoom_event_1():
 
     def filter_func(*args):
         return True
+
     z.set_filter(filter_func)
     list(div.event_listeners(event))
     event["typename"] = "mousemove"
     list(div.event_listeners(event))
     assert b[0] is not None
+
 
 def test_zoom_event_2():
     div = d3.create("div").datum("hello")
@@ -68,11 +71,14 @@ def test_zoom_event_2():
         "type": "MouseEvent",
     }
     a = [None]
+
     def extent_func(*args):
         a[0] = list(args)
         return extent(*args)
+
     def filter_func(*args):
         return True
+
     z.set_filter(filter_func).set_extent(extent_func)
     div.call(z)
     div.call(z.transform, d3.zoom_identity, None, None)

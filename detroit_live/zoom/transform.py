@@ -32,6 +32,7 @@ class Transform:
     >>> identity == d3.zoom_identity
     True
     """
+
     def __init__(self, k: float, x: float, y: float):
         self.k = k
         self.x = x
@@ -63,7 +64,7 @@ class Transform:
         Parameters
         ----------
         o : Any
-           Other object 
+           Other object
 
         Returns
         -------
@@ -141,7 +142,7 @@ class Transform:
         Parameters
         ----------
         y : float
-           Y-coordinate point 
+           Y-coordinate point
 
         Returns
         -------

@@ -5,9 +5,9 @@ from functools import reduce
 from operator import iadd, itemgetter
 from pathlib import Path
 
-import detroit_live as d3
 import polars as pl
 
+import detroit_live as d3
 
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
 URLS = {

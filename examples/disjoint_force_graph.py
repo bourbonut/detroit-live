@@ -1,7 +1,9 @@
 # https://observablehq.com/@d3/disjoint-force-directed-graph/2
 import json
 from math import sqrt
+
 import requests
+
 import detroit_live as d3
 
 URL = "https://static.observableusercontent.com/files/e3680d5f766e85edde560c9c31a6dba2ddfcf2f66e1dced4afa18d8040f1f205e0bde1b8b234d866373f2bfc5806fafc47e244c5c9f48b60aaa1917c1b80fcb7?response-content-disposition=attachment%3Bfilename*%3DUTF-8%27%27graph.json"
@@ -75,6 +77,7 @@ def tick(simulation):
 
 simulation.on("tick", tick, extra_nodes=link.nodes() + node.nodes())
 
+
 # Reheat the simulation when drag starts, and fix the subject position.
 def dragstarted(event, d, node):
     if not event.active:
@@ -99,11 +102,6 @@ def dragended(event, d, node):
 
 
 # Add a drag behavior.
-node.call(
-    d3.drag()
-    .on("start", dragstarted)
-    .on("drag", dragged)
-    .on("end", dragended)
-)
+node.call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended))
 
 svg.create_app().run()

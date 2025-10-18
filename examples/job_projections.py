@@ -3,15 +3,17 @@ import json
 from collections import namedtuple
 from pathlib import Path
 
-import detroit_live as d3
 import polars as pl
 import requests
+
+import detroit_live as d3
 
 URL = "https://gist.githubusercontent.com/eidietrich/0047db2bfcfae1543ff37c70474587d3/raw/51bcb25225d5517c40fc8328645973183ed140e6/trimmed-for-vis.json"
 Margin = namedtuple("Margin", ("top", "right", "bottom", "left"))
 
 PWD = Path(__file__).resolve().parent
 STYLE_PATH = PWD / "styles" / "job_projections.css"
+
 
 # Download data if not found else load data from `examples/data` folder
 def load_data() -> pl.DataFrame:
@@ -258,6 +260,7 @@ openings_legend = legend.append("g").attr("transform", f"translate(0, {margin.to
 data_openings = [10, 100, 500, 1_000, 2_000]
 openings_enter = openings_legend.select_all("circle").data(data_openings).enter()
 
+
 # Recursive function which returns the y-coordinate translation value for each
 # opening's circle.
 def dy(d, i):
@@ -375,6 +378,7 @@ def mouseleave(event, d, node):
     )
 
     d3.select(node).style("stroke", color(d["sector_cat"]))
+
 
 # Add events on circles
 (
