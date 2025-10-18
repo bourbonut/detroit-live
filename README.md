@@ -2,6 +2,7 @@
     <img src="https://raw.githubusercontent.com/bourbonut/detroit-live/main/docs/source/_static/logo.png"></img>
 </h1>
 
+[![PyPI Latest Release](https://img.shields.io/pypi/v/detroit-live.svg?style=flat&logo=pypi)](https://pypi.org/project/detroit-live/)
 [![Documentation Status](https://readthedocs.org/projects/detroit-live/badge/?version=latest)](https://detroit-live.readthedocs.io/en/latest/?badge=latest)
 [![Licence ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
