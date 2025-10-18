@@ -1,5 +1,6 @@
 [project]
 name = "detroit-live"
+description = "detroit-live is based on detroit and aims to bring interactivity to visualizations"
 version = "0.1.0"
 readme = "README.md"
 authors = [
