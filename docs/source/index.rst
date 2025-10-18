@@ -8,7 +8,7 @@ Installation
 
 .. code:: shell
 
-   pip install git+https://github.com/bourbonut/detroit-live.git
+   pip install detroit_live
 
 
 Getting starting
