@@ -8,12 +8,14 @@
 
 # from datetime import datetime
 
+from datetime import datetime
+
 import detroit_live
 
-# current_year = datetime.now().year
-project = 'detroit-live'
-copyright = '2025, bourbonut'
-author = 'bourbonut'
+current_year = datetime.now().year
+project = "detroit-live"
+copyright = f"2025-{current_year}, bourbonut"
+author = "bourbonut"
 release = detroit_live.__version__
 
 # -- General configuration ---------------------------------------------------
@@ -25,19 +27,19 @@ extensions = [
     "sphinxcontrib.video",
 ]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
-root_doc = 'index'
+root_doc = "index"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'furo'
-html_static_path = ['_static']
-html_favicon = '_static/favicon.ico'
+html_theme = "furo"
+html_static_path = ["_static"]
+html_favicon = "_static/favicon.ico"
 
-html_css_files = ['style.css']
+html_css_files = ["style.css"]
 
 html_theme_options = {
     "source_branch": "main",
@@ -57,7 +59,6 @@ html_theme_options = {
         },
     ],
 }
-
 
 
 html_title = f"Detroit Live v{release}"
