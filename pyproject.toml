@@ -1,7 +1,7 @@
 [project]
 name = "detroit-live"
 description = "detroit-live is based on detroit and aims to bring interactivity to visualizations"
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
 authors = [
   { name = "Benjamin BOURBON", email = "ben.bourbon06@gmail.com"},
@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
   "lxml",
-  "detroit==2.6.0",
+  "detroit>=2.6.2",
   "quart",
   "orjson",
 ]
